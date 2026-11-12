@@ -75,4 +75,7 @@ test('core-only server boots without camera relay configuration and serves a use
   assert.equal((await get('/api/platform/modules')).status, 401);
   assert.equal((await get('/app.js')).status, 404);
   assert.equal((await get('/api/rustdesk/config')).status, 404);
+  const onboarding = 'http://127.0.0.1:' + server.plain.address().port;
+  for (const asset of ['/ui.css', '/ui.js']) assert.equal((await fetch(onboarding + asset)).status, 200, 'shared onboarding asset ' + asset);
+  assert.equal((await fetch(onboarding + '/api/platform/ai')).status, 404, 'HTTP onboarding does not expose private APIs');
 });

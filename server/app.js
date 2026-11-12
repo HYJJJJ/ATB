@@ -39,7 +39,7 @@ export function createHandler({ secure, certDir, lanIp, httpsPort, httpPort, acc
       if (secure && pathname === '/') { res.writeHead(302, { Location: '/platform' }); res.end(); return; }
       const entry = !secure && pathname === '/' ? files.get('/setup') : files.get(pathname);
       const asset = secure ? modules.asset(pathname) : null;
-      if (!secure && !['/', '/setup', '/platform.css'].includes(pathname) || !entry && !asset) { respond(404, 'text/plain', 'Not found'); return; }
+      if (!secure && !['/', '/setup', '/platform.css', '/ui.css', '/ui.js'].includes(pathname) || !entry && !asset) { respond(404, 'text/plain', 'Not found'); return; }
       if (asset) {
         let content = await readFile(asset.file);
         if (/^(text\/|image\/svg)/.test(asset.type)) content = await asset.module.instance.transformAsset?.(asset.relative, content.toString('utf8'), requestConfig) ?? content;

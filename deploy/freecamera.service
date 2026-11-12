@@ -1,0 +1,28 @@
+[Unit]
+Description=FreeCamera HTTPS and authenticated media relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=freecamera
+Group=freecamera
+WorkingDirectory=/opt/freecamera/current
+EnvironmentFile=/etc/freecamera/server.env
+ExecStart=/opt/freecamera/node/bin/node /opt/freecamera/current/server/index.js
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+KillSignal=SIGTERM
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/freecamera
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

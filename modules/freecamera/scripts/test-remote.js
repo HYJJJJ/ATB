@@ -1,0 +1,71 @@
+import assert from 'node:assert/strict';
+import net from 'node:net';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
+import { _electron as electron, chromium } from 'playwright';
+import { startServers } from '../../../server/index.js';
+import { loginViewer } from './account-test-helper.js';
+const require=createRequire(import.meta.url), root=path.resolve(fileURLToPath(new URL('../../../',import.meta.url)));
+const directory=await mkdtemp(path.join(tmpdir(),'freecamera-remote-desktop-')), home=path.join(directory,'home'), viewer=path.join(directory,'viewer');
+const output=path.join(root,'test-results','remote'); await mkdir(output,{recursive:true});
+async function port() {const s=net.createServer();await new Promise(r=>s.listen(0,'127.0.0.1',r));const p=s.address().port;await new Promise(r=>s.close(r));return p;}
+async function listening(port) {return new Promise(resolve=>{const s=net.connect({host:'127.0.0.1',port});s.once('connect',()=>{s.destroy();resolve(true);});s.once('error',()=>resolve(false));});}
+const remotePort=await port(), remoteHttp=await port(), localPort=await port(), localHttp=await port();
+let service=await startServers({ relayPort: 0, lanIp:'127.0.0.1',httpsPort:remotePort,httpPort:remoteHttp,certDir:path.join(home,'certs'),dataDir:path.join(home,'data')}), desktop, browser;
+const origin=`https://127.0.0.1:${remotePort}`;
+async function launch() {
+ const env={...process.env, TURN_PORT: '0', FREECAMERA_DATA_DIR:viewer,LAN_IP:'127.0.0.1',HTTPS_PORT:String(localPort),HTTP_PORT:String(localHttp)};delete env.ELECTRON_RUN_AS_NODE;
+ const executablePath=process.env.FREECAMERA_DESKTOP_EXECUTABLE||require('electron');
+ return electron.launch({executablePath,args:process.env.FREECAMERA_DESKTOP_EXECUTABLE?[]:[root],env,timeout:30000});
+}
+try {
+ desktop=await launch(); let page=await desktop.firstWindow();
+ await page.waitForURL("**/platform*"); await page.goto(`https://127.0.0.1:${localPort}/?mode=viewer`);
+ await page.locator('#connection-settings').click({timeout:5000});
+ await page.waitForURL('**/desktop/connect.html');
+ await page.locator('#remote-address').fill(origin);
+ await page.locator('#connect-remote').click();
+ await page.locator('#connection-error').waitFor({state:'visible'});
+ assert.match(await page.locator('#connection-error').textContent(),/无法验证/,'wrong local CA must not trust the home server');
+ const certPath=path.join(home,'certs','ca.crt');
+ await desktop.evaluate(({dialog},filename)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[filename]});},certPath);
+ await page.locator('#choose-certificate').click();
+ await page.waitForFunction(()=>document.querySelector('#certificate-info').textContent.includes('SHA-256'));
+ await page.screenshot({path:path.join(output,'connection-settings.png'),fullPage:true});
+ await page.locator('#connect-remote').click(); await page.waitForURL(`${origin}/platform*`); await page.goto(`${origin}/?mode=viewer`);
+ await loginViewer(page);
+ const captureConfiguration=()=>{const Original=window.RTCPeerConnection;window.testIceConfigurations=[];window.RTCPeerConnection=class extends Original{constructor(config){super(config);window.testIceConfigurations.push(config);}};};
+ await page.evaluate(captureConfiguration);
+ assert.equal(await listening(localPort),true,'switching away must preserve the existing home service');
+ await assert.rejects(page.evaluate(async ()=>(await import("/desktop-bridge.js")).cameraDesktop.connectionState()),/Untrusted/,'remote website cannot use settings-only IPC');
+ browser=await chromium.launch({args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream']});
+ const context=await browser.newContext({ignoreHTTPSErrors:true,permissions:['camera','microphone']});
+ await context.addInitScript(captureConfiguration);
+ const camera=await context.newPage();await camera.goto(`${origin}/?mode=camera`);await camera.locator('#start').click();
+ await page.locator('#camera-list .device-connect').click();
+ await page.waitForFunction(()=>document.querySelector('#status').textContent==='实时画面');
+ for (const peer of [page,camera]) assert.equal(await peer.evaluate(port=>window.testIceConfigurations.some(config=>config.iceServers?.some(server=>server.urls.includes(`stun:127.0.0.1:${port}`))),remotePort),true,'both peers must receive the private-network STUN configuration');
+ await page.screenshot({path:path.join(output,'remote-viewer.png'),fullPage:true});
+ const recording=path.join(output,'switch-recording.webm');
+ await desktop.evaluate(({dialog},filename)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:filename});},recording);
+ await page.locator('#record').click();await page.waitForFunction(()=>document.querySelector('#record').textContent==='停止录像');await page.waitForTimeout(1200);
+ await page.locator('#connection-settings').click();await page.waitForURL('**/desktop/connect.html');
+ assert.ok((await readFile(recording)).length>500,'opening connection settings must finish the active recording');
+ await page.locator('#connect-remote').click();await page.waitForURL(`${origin}/platform*`); await page.goto(`${origin}/?mode=viewer`);
+ await desktop.close();desktop=null;
+ assert.equal(await listening(localPort),false);assert.equal(await listening(remotePort),true);
+ const profile=JSON.parse(await readFile(path.join(viewer,'data','desktop-connection.json'),'utf8'));assert.equal(profile.mode,'remote');assert.equal(profile.origin,origin);
+ desktop=await launch();page=await desktop.firstWindow();await page.waitForURL(`${origin}/platform*`); await page.goto(`${origin}/?mode=viewer`);
+ assert.equal(await listening(localPort),false,'saved remote mode must not start a local service');
+ await page.evaluate(async ()=>{location.href='https://example.com/';});await page.waitForTimeout(100);assert.equal(new URL(page.url()).origin,origin);
+ await desktop.close();desktop=null;await browser.close();browser=null;await service.close();service=null;
+ desktop=await launch();page=await desktop.firstWindow();await page.waitForURL('**/desktop/connect.html');
+ await page.locator('#connection-error').waitFor({state:'visible'});assert.equal(await listening(localPort),false);
+ await page.locator('#connect-local').click();await page.waitForURL(`https://127.0.0.1:${localPort}/platform*`); await page.goto(`https://127.0.0.1:${localPort}/?mode=viewer`);
+ assert.equal(await listening(localPort),true);await desktop.close();desktop=null;
+ await writeFile(path.join(output,'report.json'),JSON.stringify({passed:true,time:new Date().toISOString(),checks:['wrong root refused','native public CA import','direct remote camera listing and real video','settings-only IPC denied to hosted page','recording finalized before settings','local service retained while switching','remote server preserved on exit','saved remote startup without local server','external navigation refused','offline remote recovery to local'],origin},null,2));
+ console.log('PASS: trusted remote connection, real video, settings isolation, persisted remote startup without local hosting, recording finalization and offline recovery');
+} finally {await desktop?.close();await browser?.close();await service?.close();await rm(directory,{recursive:true,force:true,maxRetries:5,retryDelay:200});}

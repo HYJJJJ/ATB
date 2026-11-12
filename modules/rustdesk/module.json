@@ -1,0 +1,16 @@
+{
+  "id": "rustdesk",
+  "name": "RustDesk 远程桌面",
+  "description": "自建远程桌面服务配置、连接检查与官方客户端启动入口",
+  "version": "0.6.0",
+  "apiVersion": 1,
+  "entry": "/modules/rustdesk/",
+  "server": "server/index.js",
+  "desktop": "desktop/index.cjs",
+  "assets": {
+    "/modules/rustdesk/": "public/index.html",
+    "/modules/rustdesk/rustdesk.css": "public/rustdesk.css",
+    "/modules/rustdesk/rustdesk.js": "public/rustdesk.js",
+    "/modules/rustdesk/desktop.js": "public/desktop.js"
+  }
+}

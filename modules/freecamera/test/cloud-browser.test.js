@@ -1,0 +1,56 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { chromium } from 'playwright';
+import { startServers } from '../../../server/index.js';
+import { AccountStore } from '../../../server/accounts.js';
+import { loginViewer } from '../scripts/account-test-helper.js';
+import WebSocket from 'ws';
+import { once } from 'node:events';
+import { DeviceStore } from '../server/devices.js';
+
+test('enrolled cloud camera keeps capture after login session loss and network wake', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'freecamera-enrollment-'));
+  t.after(() => rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  const accounts = await AccountStore.load(path.join(directory, 'data/account.json'));
+  const credentials = { username: 'test', password: 'test' }; await accounts.setup(credentials.username, credentials.password);
+  const service = await startServers({ lanIp: '127.0.0.1', httpsPort: 0, relayPort: 0, dataDir: path.join(directory, 'data'), certDir: path.join(directory, 'certs'), publicOrigin: 'https://127.0.0.1:57728', relayPublicPort: 33365 });
+  t.after(() => service.close());
+  const browser = await chromium.launch({ args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] });
+  t.after(() => browser.close());
+  const context = await browser.newContext({ ignoreHTTPSErrors: true, permissions: ['camera', 'microphone'] }), page = await context.newPage();
+  await page.goto(`https://127.0.0.1:${service.secure.address().port}/?mode=camera`);
+  await loginViewer(page, credentials); await page.locator('#start').click();
+  await page.waitForFunction(() => /^\d{8}$/.test(document.querySelector('#pair-code').textContent));
+  const track = await page.locator('video').evaluate(v => v.srcObject.getVideoTracks()[0].id);
+  await page.evaluate(async () => { await fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); window.dispatchEvent(new Event('online')); });
+  await page.waitForTimeout(150);
+  const capture = await page.locator('video').evaluate(v => v.srcObject?.getVideoTracks().map(t => ({ id: t.id, state: t.readyState })));
+  assert.deepEqual(capture, [{ id: track, state: 'live' }]);
+  assert.equal(await page.locator('#start').isVisible(), false);
+  assert.equal(await page.locator('#view-workspace').isVisible(), true);
+});
+
+test('online compute cannot enable detection while selected camera is offline', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'freecamera-offline-controls-'));
+  t.after(() => rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  const accounts = await AccountStore.load(path.join(directory, 'data/account.json'));
+  const credentials = { username: 'test', password: 'test' }; await accounts.setup(credentials.username, credentials.password);
+  const store = await DeviceStore.load(path.join(directory, 'data/devices.json')); await store.camera({ name: 'offline camera' });
+  const service = await startServers({ detector: null, lanIp: '127.0.0.1', httpsPort: 0, httpPort: 0, relayPort: 0, dataDir: path.join(directory, 'data'), certDir: path.join(directory, 'certs') });
+  t.after(() => service.close());
+  const browser = await chromium.launch(); t.after(() => browser.close());
+  const context = await browser.newContext({ ignoreHTTPSErrors: true }), page = await context.newPage();
+  const origin = `https://127.0.0.1:${service.secure.address().port}`;
+  await page.goto(`${origin}/?mode=viewer`); await loginViewer(page, credentials);
+  await page.locator('.device-connect').click(); await page.waitForFunction(() => document.querySelector('#presence').textContent.includes('离线'));
+  const cookies = (await context.cookies()).map(c => `${c.name}=${c.value}`).join('; ');
+  const ws = new WebSocket(`${origin.replace('https:', 'wss:')}/signal`, { rejectUnauthorized: false, origin, headers: { Cookie: cookies } });
+  t.after(() => ws.terminate()); await once(ws, 'open');
+  const registered = once(ws, 'message'); ws.send(JSON.stringify({ type: 'detection-provider-register' }));
+  assert.equal(JSON.parse((await registered)[0]).type, 'detection-provider-ready');
+  await page.waitForFunction(() => document.querySelector('#detection-status').textContent.includes('在线') || document.querySelector('#detection-status').textContent.includes('摄像头离线'));
+  assert.equal(await page.locator('#detection-toggle').isDisabled(), true);
+});

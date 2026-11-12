@@ -1,0 +1,57 @@
+{
+  "name": "atb",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "setup": "node scripts/setup-cert.js",
+    "test": "node scripts/test-all.js",
+    "test:browser": "node modules/freecamera/scripts/browser-test.js",
+    "check": "node scripts/check.js",
+    "desktop": "electron .",
+    "setup:model": "node modules/freecamera/scripts/setup-model.js",
+    "test:desktop": "node modules/freecamera/scripts/test-desktop.js",
+    "package:desktop": "node scripts/package-atb.js all",
+    "test:features": "node modules/freecamera/scripts/test-features.js",
+    "test:audio": "node modules/freecamera/scripts/test-audio.js",
+    "test:audio:desktop": "node modules/freecamera/scripts/test-audio.js --desktop",
+    "test:accounts": "node modules/freecamera/scripts/test-accounts.js",
+    "test:remote": "node modules/freecamera/scripts/test-remote.js",
+    "test:connections": "node modules/freecamera/scripts/test-connections.js",
+    "test:viewer-settings": "node modules/freecamera/scripts/test-viewer-settings.js",
+    "test:reconnect": "node modules/freecamera/scripts/test-reconnect.js",
+    "test:talkback": "node modules/freecamera/scripts/test-talkback.js",
+    "test:talkback:desktop": "node modules/freecamera/scripts/test-talkback.js --desktop",
+    "test:camera-settings": "node modules/freecamera/scripts/test-camera-settings.js",
+    "test:camera-settings:desktop": "node modules/freecamera/scripts/test-camera-settings.js --desktop",
+    "test:relay": "node modules/freecamera/scripts/test-relay.js",
+    "test:service-restart": "node modules/freecamera/scripts/test-service-restart.js",
+    "package:full": "node scripts/package-atb.js full",
+    "package:core": "node scripts/package-atb.js core",
+    "release:check": "node scripts/release-atb.js check",
+    "release:manifest": "node scripts/release-atb.js manifest",
+    "test:packaged": "node scripts/test-packaged-atb.js"
+  },
+  "dependencies": {
+    "node-forge": "^1.3.1"
+  },
+  "devDependencies": {
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0",
+    "playwright": "^1.56.0"
+  },
+  "description": "ATB · All The Best — a modular personal workspace",
+  "author": "ATB",
+  "main": "desktop/main.cjs",
+  "optionalDependencies": {
+    "onnxruntime-node": "^1.31.1",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.35.5",
+    "turn-server": "0.8.0",
+    "ws": "^8.18.0"
+  }
+}

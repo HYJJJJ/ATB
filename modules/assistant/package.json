@@ -1,0 +1,13 @@
+{
+  "name": "@atb/assistant",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "description": "ATB assistant, model connection, and local speech module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}

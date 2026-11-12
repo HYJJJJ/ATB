@@ -1,0 +1,26 @@
+{
+  "id": "assistant",
+  "name": "智能助手",
+  "description": "模型对话、角色设定、长期记忆与本机语音",
+  "version": "0.6.0",
+  "apiVersion": 1,
+  "entry": "/modules/assistant/",
+  "server": "server/index.js",
+  "desktop": "desktop/index.cjs",
+  "assets": {
+    "/modules/assistant/": "public/index.html",
+    "/modules/assistant/index.html": "public/index.html",
+    "/modules/assistant/assistant.js": "public/assistant.js",
+    "/modules/assistant/assistant.css": "public/assistant.css",
+    "/modules/assistant/assistant-context.js": "public/assistant-context.js",
+    "/assistant-context.js": "public/assistant-context.js",
+    "/modules/assistant/assistant-voice.js": "public/assistant-voice.js",
+    "/assistant-voice.js": "public/assistant-voice.js",
+    "/modules/assistant/assistant-audio-worklet.js": "public/assistant-audio-worklet.js",
+    "/assistant-audio-worklet.js": "public/assistant-audio-worklet.js",
+    "/modules/assistant/voice-audio.js": "public/voice-audio.js",
+    "/voice-audio.js": "public/voice-audio.js",
+    "/assistant-desktop.js": "public/assistant-desktop.js",
+    "/modules/assistant/assistant-desktop.js": "public/assistant-desktop.js"
+  }
+}

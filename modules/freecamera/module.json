@@ -1,0 +1,27 @@
+{
+  "id": "freecamera",
+  "name": "FreeCamera",
+  "description": "手机摄像头、实时观看、人物检测和本地录像",
+  "version": "0.6.0",
+  "apiVersion": 1,
+  "entry": "/modules/freecamera/",
+  "server": "server/index.js",
+  "desktop": "desktop/index.cjs",
+  "assets": {
+    "/modules/freecamera/": "public/index.html",
+    "/modules/freecamera/index.html": "public/index.html",
+    "/setup": "public/setup.html",
+    "/app.js": "public/app.js",
+    "/account.js": "public/account.js",
+    "/camera-peer.js": "public/camera-peer.js",
+    "/camera-settings.js": "public/camera-settings.js",
+    "/compute-provider.js": "public/compute-provider.js",
+    "/desktop-bridge.js": "public/desktop-bridge.js",
+    "/signal.js": "public/signal.js",
+    "/talkback.js": "public/talkback.js",
+    "/viewer-tools.js": "public/viewer-tools.js",
+    "/style.css": "public/style.css",
+    "/modules/freecamera/platform-provider.js": "public/platform-provider.js"
+  },
+  "background": "/modules/freecamera/platform-provider.js"
+}

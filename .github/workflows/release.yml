@@ -1,0 +1,51 @@
+name: Windows release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install chromium
+      - run: npm run setup:model
+      - run: npm test
+      - run: npm run check
+      - name: Build from committed source
+        shell: pwsh
+        run: node scripts/package-atb.js all --source-commit $env:GITHUB_SHA
+      - run: npm run test:packaged
+      - name: Archive and validate
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $output = "release-atb-$($version.Replace('.', ''))"
+          git archive --format=zip --prefix="ATB-$version/" --output="$output/ATB-$version-source.zip" HEAD
+          npm run release:manifest
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          npm run release:check
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Publish complete release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $output = "release-atb-$($version.Replace('.', ''))"
+          gh release view "v$version" *> $null
+          if ($LASTEXITCODE -eq 0) { throw 'This version is already published; create a new source version.' }
+          gh release create "v$version" --target $env:GITHUB_SHA --title "ATB $version" --generate-notes "$output/ATB-$version-source.zip" "$output/ATB-$version-Windows-x64-full.exe" "$output/ATB-$version-Windows-x64-core.exe" "$output/SHA256SUMS" "$output/release-manifest.json"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }

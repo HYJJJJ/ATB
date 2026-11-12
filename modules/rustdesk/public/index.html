@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>RustDesk 远程桌面 · ATB</title>
+  <link rel="stylesheet" href="/modules/rustdesk/rustdesk.css">
+  <script type="module" src="/modules/rustdesk/rustdesk.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+  <header><a class="brand" href="/platform"><span class="brand-mark">A</span><span>ATB <small>All The Best</small></span></a><a class="back" href="/platform">← 返回平台</a></header>
+  <main id="main">
+    <section class="hero">
+      <div><span class="eyebrow">REMOTE DESKTOP</span><h1>连接你的另一台设备<span>。</span></h1><p>通过自建 RustDesk 服务找到设备，并在官方客户端中安全地控制桌面。</p><div class="hero-actions"><button class="primary" id="open-client" disabled>打开 RustDesk 客户端 <span aria-hidden="true">↗</span></button><a class="secondary" href="https://github.com/rustdesk/rustdesk/releases/latest" target="_blank" rel="noopener noreferrer">下载官方客户端</a></div><p class="fine" id="native-state">正在检查桌面启动能力…</p></div>
+      <div class="connection-art" aria-hidden="true"><div class="screen">▰<i></i></div><span class="connection-line">········</span><div class="screen small-screen">▰<i></i></div></div>
+    </section>
+    <div id="login-state" class="banner" role="status" hidden>请先<a href="/platform">登录 ATB 平台</a>，再查看服务器配置。</div>
+    <div id="notice" role="status" aria-live="polite"></div>
+    <div class="layout">
+      <section class="card configuration"><div class="section-head"><div><span class="eyebrow">SERVER CONFIGURATION</span><h2>客户端连接配置</h2></div><span class="badge" id="config-badge">读取中</span></div><p class="muted">在两台设备的 RustDesk 中打开「设置 → 网络 → ID / 中继服务器」，依次填写以下三个字段。</p>
+        <div class="config-field"><label for="id-server">ID 服务器</label><div><input id="id-server" readonly placeholder="尚未配置"><button class="copy" data-copy="id-server" aria-label="复制 ID 服务器" disabled>复制</button></div></div>
+        <div class="config-field"><label for="relay-server">中继服务器</label><div><input id="relay-server" readonly placeholder="尚未配置"><button class="copy" data-copy="relay-server" aria-label="复制中继服务器" disabled>复制</button></div></div>
+        <div class="config-field"><label for="public-key">Key · 服务器公钥</label><div><input id="public-key" readonly placeholder="尚未配置"><button class="copy" data-copy="public-key" aria-label="复制服务器公钥" disabled>复制</button></div><p class="fine">这里是用于验证服务器身份的公钥。访问密码在被控设备的 RustDesk 客户端中设置。</p></div>
+        <div class="config-actions"><button id="copy-all" class="secondary" disabled>复制全部字段</button><a id="export-config" class="text-link" href="/api/rustdesk/export" download hidden>导出公开配置 ↓</a></div>
+        <p class="fine">服务器地址统一由 <a href="/platform#settings">ATB 平台设置</a>维护。导出的 JSON 是连接备忘，需手动填写到官方客户端。</p>
+        <details class="edit-settings"><summary>管理 RustDesk 公网端口与公钥</summary><form id="settings-form"><p class="fine">填写服务器面板实际映射的公网端口。修改这里只保存客户端连接配置；不会修改防火墙或重启服务器服务。</p><div class="port-grid"><label>ID 服务端口<input id="setting-id-port" type="number" min="1" max="65535" required></label><label>中继服务端口<input id="setting-relay-port" type="number" min="1" max="65535" required></label><label>NAT 检测端口<input id="setting-nat-port" type="number" min="1" max="65535" required></label></div><label>服务器公钥<input id="setting-key" autocomplete="off" required maxlength="80"></label><button class="secondary" id="save-settings" type="submit">保存连接配置</button><p class="fine" id="settings-result" role="status"></p></form></details>
+        <div class="warning" id="nat-warning" hidden><strong>NAT 检测端口映射需要调整</strong><p id="nat-message"></p><p>请先修正端口映射再验证外网连接；当前页面未验证真实远控成功。</p></div>
+      </section>
+      <aside class="card health"><div class="section-head"><h2>服务连接检查</h2><button id="refresh-status" class="quiet" disabled aria-label="刷新连接检查">刷新 ↻</button></div><div class="status-summary"><span class="status-dot" id="status-dot"></span><div><strong id="health-state">等待配置</strong><small id="health-time">从 ATB 服务器检查</small></div></div><ul id="health-checks" class="health-checks"></ul><p class="fine" id="health-note">检查的是服务器侧 TCP 端口连通性。UDP、客户端注册与两台设备间的远控仍需实际验证。</p><dl class="details"><div><dt>服务端版本</dt><dd id="server-version">—</dd></div><div><dt>真实远控验证</dt><dd>待两台设备实测</dd></div><div><dt>远控执行方式</dt><dd>官方原生客户端</dd></div></dl></aside>
+      <section class="card instructions"><span class="eyebrow">GET CONNECTED</span><h2>用两台设备完成第一次连接</h2><ol class="steps"><li><span>01</span><div><h3>安装并配置两端客户端</h3><p>在控制端和被控端安装官方 RustDesk。两端填写上方相同的 ID 服务器、中继服务器和 Key，保存后等待客户端显示就绪。</p></div></li><li><span>02</span><div><h3>在被控设备允许访问</h3><p>取得被控设备显示的 RustDesk ID。可使用一次性密码，或在官方客户端的安全设置中设置永久访问密码。不要在这里填写服务器 SSH 密码。</p></div></li><li><span>03</span><div><h3>从控制端发起连接</h3><p>输入被控设备 ID，打开官方客户端连接。按客户端提示确认访问或输入该设备的访问密码。</p></div></li></ol><form id="connect-form"><label for="remote-id">被控设备 RustDesk ID</label><div class="connect-row"><input id="remote-id" inputmode="numeric" autocomplete="off" placeholder="例如 123 456 789" maxlength="30" required><button class="primary" id="connect-client" disabled>连接设备 ↗</button></div><p class="fine">ATB 桌面版可启动已安装的 Windows 客户端；浏览器中请手动打开 RustDesk 并输入 ID。</p></form></section>
+      <aside class="card boundary"><span class="eyebrow">YOUR CONNECTION</span><h2>由你掌握访问权限</h2><p>ATB 提供服务器配置与启动入口。桌面画面、访问确认和会话密码均由官方 RustDesk 客户端处理。</p><p>本模块不会收集或保存被控设备密码，也不包含第三方客户端安装包。</p><a class="text-link" href="https://rustdesk.com/docs/en/self-host/client-configuration/" target="_blank" rel="noopener noreferrer">查看官方配置说明 ↗</a></aside>
+    </div><footer><span>ATB · RustDesk 模块</span><span>All The Best</span></footer>
+  </main>
+</body>
+</html>

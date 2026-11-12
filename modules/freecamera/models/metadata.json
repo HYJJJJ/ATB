@@ -1,0 +1,21 @@
+{
+  "name": "YOLOX tiny",
+  "publisher": "Megvii-BaseDetection",
+  "release": "0.1.1rc0",
+  "license": "Apache-2.0",
+  "source": "https://github.com/Megvii-BaseDetection/YOLOX",
+  "url": "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_tiny.onnx",
+  "filename": "yolox_tiny.onnx",
+  "bytes": 20219662,
+  "sha256": "427cc366d34e27ff7a03e2899b5e3671425c262ea2291f88bb942bc1cc70b0f7",
+  "input": { "width": 416, "height": 416, "format": "float32 BGR CHW, 0-255, top-left letterbox filled with 114" },
+  "classes": "COCO 80 classes; only class 0 (person) is returned",
+  "backend": "ONNX Runtime CPU",
+  "validationImage": {
+    "url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/bus.jpg",
+    "filename": "validation-person.jpg",
+    "bytes": 137419,
+    "sha256": "c02019c4979c191eb739ddd944445ef408dad5679acab6fd520ef9d434bfbc63",
+    "purpose": "Optional public sample used only to validate actual person inference"
+  }
+}

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b101d"><title>ATB · 智能助手</title>
+  <link rel="stylesheet" href="/modules/assistant/assistant.css"><script type="module" src="/modules/assistant/assistant.js"></script>
+</head>
+<body>
+<svg class="svg-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3Z"/><path d="M9 20v-7h6v7"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 2.7 6.3L21 12l-6.3 2.7L12 21l-2.7-6.3L3 12l6.3-2.7Z"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h7m4 0h5M4 17h3m4 0h9"/><circle cx="13" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+  <symbol id="i-voice" viewBox="0 0 24 24"><path d="M4 10v4m4-8v12m4-15v18m4-15v12m4-8v4"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+</defs></svg>
+<a class="skip-link" href="#content">跳到主要内容</a>
+<div class="app">
+  <aside class="sidebar" aria-label="工作台导航">
+    <a class="logo" href="/platform"><span class="logo-icon"><svg><use href="#i-home"/></svg></span><span>ATB<small>All The Best</small></span></a>
+    <div class="nav-label">工作空间</div>
+    <nav aria-label="助手导航">
+      <button class="nav active" data-page="assistant"><svg><use href="#i-spark"/></svg>智能助手</button>
+      <div class="nav-label">配置中心</div>
+      <button class="nav" data-page="model"><svg><use href="#i-sliders"/></svg>模型服务</button>
+      <button class="nav" data-page="voice"><svg><use href="#i-voice"/></svg>语音与集成</button>
+    </nav>
+    <div class="side-bottom"><span id="service-status" role="status">正在检测服务…</span><small id="service-host"></small></div>
+  </aside>
+  <main id="content" tabindex="-1">
+    <header><span class="top-label">工作台 <span aria-hidden="true">/</span> <strong id="breadcrumb">智能助手</strong></span><div class="header-right"><button id="connection" class="quiet" hidden>连接设置</button><span id="user-label">访客</span><button id="logout" class="quiet" hidden>退出登录</button></div></header>
+    <div id="network-banner" class="network-banner" role="status" hidden>服务连接中断，正在自动重连。未保存的内容会保留。</div>
+    <section id="login" class="login card" hidden><span class="eyebrow">你的家庭，从这里连接</span><h1 id="login-title">登录工作台</h1><p id="login-note" class="muted">使用 ATB 管理员账号继续。</p><form id="login-form"><label>账号<input name="username" autocomplete="username" value="admin"></label><label>密码<input name="password" type="password" autocomplete="current-password"></label><label id="confirm-row" hidden>确认密码<input name="confirm" type="password" autocomplete="new-password"></label><p class="error" id="login-error" role="alert"></p><button class="primary" type="submit">进入工作台</button></form><a href="/platform" class="text-link">返回平台</a></section>
+    <div id="workspace" hidden>
+      <section class="page" id="page-assistant" hidden>
+        <div class="page-title"><span class="eyebrow">PERSONAL ASSISTANT</span><h1>你的智能助手</h1><p>打字或开口说话，共用同一个助手、角色设定与记忆。</p></div>
+        <div id="assistant-setup" class="setup-hint" hidden><span>先连接一个模型，助手才能回复你。</span><button class="secondary" data-goto="model">配置模型</button></div>
+        <div class="assistant-layout"><div class="card chat"><div class="chat-head"><span class="icon purple"><svg><use href="#i-spark"/></svg></span><div><strong id="assistant-name">小助手</strong><small id="chat-state" role="status">准备就绪</small></div><button id="clear-chat" class="quiet">清空对话</button></div><div id="messages" class="messages" role="log" aria-label="助手对话" aria-live="polite"></div><div class="voice-toolbar"><div><button id="voice-start" class="secondary" type="button" disabled>开始语音对话</button><button id="voice-interrupt" class="secondary" type="button" hidden>打断并说话</button><button id="voice-stop" class="quiet" type="button" hidden>暂停语音</button></div><small id="voice-live" role="status">正在检测本机语音…</small></div><form id="chat-form"><label class="sr-only" for="chat-input">发给助手的消息</label><textarea id="chat-input" maxlength="4000" rows="2" placeholder="想聊些什么？"></textarea><div class="compose-actions"><small>Enter 发送 · Shift + Enter 换行</small><div><button id="stop-chat" class="secondary" type="button" hidden>停止</button><button class="primary" type="submit">发送 ↑</button></div></div></form><p id="chat-error" class="error" role="alert"></p><small class="chat-foot">对话保留在当前浏览器会话；退出账号或清空对话会删除。长期记忆独立保存。</small></div>
+          <div class="stack"><form class="card settings" id="persona-form"><div class="form-heading"><h2>助手设定</h2><span class="save-state" id="persona-state">已保存</span></div><label>助手名称<input id="name" maxlength="60" required></label><label>角色说明<textarea id="prompt" rows="5" maxlength="4000"></textarea></label><button class="secondary" type="submit">保存设定</button><p class="form-result" id="persona-result" role="status"></p></form><form class="card settings" id="memory-form"><div class="form-heading"><h2>长期记忆</h2><span class="save-state" id="memory-state">已保存</span></div><p class="muted">手动保存重要信息；每次文字对话时带给模型。当前还不会自动整理记忆。</p><label>记忆内容<textarea id="memory" rows="5" maxlength="8000" placeholder="例如：我喜欢简洁的回答。"></textarea></label><button class="secondary" type="submit">保存记忆</button><p class="form-result" id="memory-result" role="status"></p></form></div>
+        </div>
+      </section>
+      <section class="page" id="page-model" hidden>
+        <div class="page-title"><span class="eyebrow">MODEL CONNECTION</span><h1>连接你的模型</h1><p>官方与第三方接口都能用。地址、密钥和模型由你决定。</p></div>
+        <form class="card settings model-form" id="model-form"><div class="form-heading"><h2>对话服务</h2><span class="save-state" id="model-state">已保存</span></div>
+          <div class="form-grid"><label>接口类型<select id="provider"><option value="custom">自定义 / 第三方兼容接口</option><option value="dashscope">阿里云百炼快捷配置</option><option value="openai">OpenAI 官方快捷配置</option></select></label><label>请求协议<select id="protocol"><option value="chat">Chat Completions</option><option value="responses">Responses</option></select></label></div>
+          <label>接口基础地址<input id="base-url" type="url" placeholder="https://example.com/v1" autocomplete="url" required></label><p class="field-help">填写服务商提供的地址；粘贴完整接口地址也会自动整理。支持公网 HTTPS 域名。</p>
+          <label>API 密钥<input id="api-key" type="password" autocomplete="new-password" placeholder="填写密钥；留空保留已保存密钥"></label><p id="key-state" class="field-help"></p><label class="check"><input id="clear-key" type="checkbox">删除已保存密钥</label>
+          <div class="model-discovery"><div><h3>选择模型</h3><p class="muted">先获取列表，再选择；无需提前保存。</p></div><button id="load-models" class="secondary" type="button">获取模型列表</button></div>
+          <p id="models-status" class="field-help" role="status">也可以直接输入服务商提供的模型名称。</p><div id="model-picker" hidden><label>搜索列表<input id="model-filter" type="search" placeholder="筛选模型名称"></label><label>可用模型<select id="available-models"><option value="">请选择一个模型</option></select></label></div>
+          <label>模型名称<input id="model" maxlength="100" placeholder="选择列表中的模型，或手动填写" autocomplete="off"></label><p class="field-help">列表展示服务商声明的模型；是否具备对话权限，以实际测试为准。</p>
+          <div class="form-actions"><button class="primary" type="submit">保存模型配置</button><button class="secondary" id="test-model" type="button">测试已保存配置</button></div><p id="model-result" class="form-result" role="status"></p>
+          <details class="privacy-note"><summary>密钥和数据如何处理？</summary><p>密钥只由服务端保存，不回显到页面。切换地址时需要重新填写。对话将发往你填写的服务商；服务管理员可以读取数据目录内的密钥。测试连接会产生一次短文本请求，费用按服务商规则计算。</p></details>
+        </form>
+      </section>
+      <section class="page" id="page-voice" hidden>
+        <div class="page-title"><span class="eyebrow">VOICE ASSISTANT</span><h1>语音与集成</h1><p>采用小智支持的语音组件：本机识别，在线生成声音。</p></div>
+        <div class="card information"><div class="section-head compact"><h2>你的语音链路</h2><span class="badge" id="voice-runtime-state">正在检测…</span></div><div class="voice-flow"><span>麦克风</span><b>→</b><span>本机 SenseVoice</span><b>→</b><span>你配置的大模型</span><b>→</b><span>在线 EdgeTTS</span><b>→</b><span>声音播放</span></div><p class="muted">识别在本机完成。识别文字发给当前模型服务，回复文字发送至在线合成服务；原始录音不保存。开始对话时才加载模型和打开麦克风，暂停后释放。</p></div>
+        <form class="card settings model-form" id="voice-form"><div class="form-heading"><h2>语音设置</h2><span class="save-state" id="voice-state">已保存</span></div><p class="field-help" id="voice-availability" role="status"></p><label class="check"><input id="voice-enabled" type="checkbox">开启语音能力</label><div class="form-grid"><label>回复音色<select id="voice-name"><option value="zh-CN-XiaoxiaoNeural">晓晓 · 温和女声</option><option value="zh-CN-YunxiNeural">云希 · 自然男声</option><option value="zh-CN-XiaoyiNeural">晓伊 · 轻快女声</option><option value="zh-CN-YunjianNeural">云健 · 沉稳男声</option></select></label><label>语速<select id="voice-rate"><option value="-25">慢一些</option><option value="0">正常</option><option value="25">快一些</option></select></label></div><label>说完后等待<select id="voice-silence"><option value="600">0.6 秒 · 更快提交</option><option value="1000">1 秒 · 推荐</option><option value="1500">1.5 秒 · 多等一会</option><option value="2000">2 秒 · 慢慢说</option></select></label><label class="check"><input id="voice-auto" type="checkbox">回复后继续听，方便连续追问</label><p class="field-help">本版点击“开始语音对话”后工作，可用按钮打断。前端按静音分句，本机 Silero 过滤无语音片段。常驻唤醒词与说话自动打断尚未接入。</p><div class="form-actions"><button class="primary" type="submit">保存语音设置</button><button id="voice-preview" class="secondary" type="button">试听音色</button><button class="secondary" data-goto="assistant" type="button">去语音对话</button></div><p id="voice-result" class="form-result" role="status"></p></form>
+      </section>
+    </div>
+    <div id="notice" role="status" aria-live="polite"></div>
+  </main>
+</div>
+</body></html>

@@ -1,0 +1,13 @@
+{
+  "name": "@atb/freecamera",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "onnxruntime-node": "^1.31.1",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.35.5",
+    "turn-server": "0.8.0",
+    "ws": "^8.18.0"
+  }
+}

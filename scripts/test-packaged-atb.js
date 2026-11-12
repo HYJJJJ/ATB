@@ -86,7 +86,9 @@ for (const variant of ['full', 'core']) {
       checks.push('camera-owned connection settings and exact page return');
       for (const module of discovered.modules) {
         await page.goto(origin + module.entry);
-        assert.equal(await page.evaluate(() => document.body.innerText.length > 100), true, module.id);
+        if (module.id === 'assistant') await page.locator('#workspace').waitFor({ state: 'visible' });
+        else if (module.id === 'rustdesk') await page.waitForFunction(() => document.querySelector('#config-badge')?.textContent !== '读取中');
+        else await page.locator('#module-settings').waitFor({ state: 'visible' });
       }
       const voice = await page.evaluate(() => window.atbDesktop.invokeModule('assistant', 'voice', { action: 'status' }));
       assert.equal(voice.available, false); assert.equal(voice.status, 'off');

@@ -59,6 +59,7 @@ try {
   await viewer.screenshot({ path: 'test-results/accounts/list.png', fullPage: true });
   const another = await context.newPage(); another.on('pageerror', error => errors.push(error.message));
   await another.goto(`${base}/?mode=viewer`); await another.waitForFunction(() => document.querySelector('#status').textContent === '实时画面');
+  await viewer.locator('#module-settings').evaluate(details => { details.open = true; });
   await viewer.locator('#logout').click();
   await viewer.waitForFunction(() => !document.querySelector('#auth-panel').hidden);
   await another.waitForFunction(() => !document.querySelector('#auth-panel').hidden);

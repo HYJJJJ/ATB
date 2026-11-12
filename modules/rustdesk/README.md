@@ -2,6 +2,8 @@
 
 本目录是 ATB 的完整 RustDesk 接入模块，包含页面、API、桌面启动适配和测试。远控由官方 RustDesk 客户端执行，full 发行包只包含本适配模块，不包含第三方客户端。
 
+从项目根目录使用 `Start-ATB.cmd` 或 `Start-ATB-Desktop.cmd` 启动平台，再从工作台进入本模块。
+
 ## 配置
 
 平台 `SharedSettings` 的 `server` 分组提供 `publicHost` 和 `rustdesk: {idPort,relayPort,natPort,publicKey,deployedVersion}`。所有端口均指向用户实际配置的公网映射，不假设连续端口。`publicHost` 由平台通用设置维护，RustDesk 页面管理端口和公钥。保存只更新上述三个端口及公钥，保留部署版本与其他共享字段，不会修改服务器防火墙、NAT 或进程。

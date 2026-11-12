@@ -12,7 +12,7 @@ export function sessionToken(req) {
 export class AccountStore extends EventEmitter {
   constructor(filename = null, record = null, { now = Date.now, sessionMs = 7 * 86400000 } = {}) {
     super(); this.filename = filename; this.record = record; this.now = now; this.sessionMs = sessionMs;
-    this.sessions = new Map(); this.settingUp = false; this.verifying = 0; this.pending = Promise.resolve();
+    this.sessions = new Map(); this.settingUp = false; this.verifying = 0; this.pending = Promise.resolve(); this.changes = Promise.resolve();
     this.sessionFile = filename ? path.join(path.dirname(filename), 'account-sessions.json') : null;
   }
   static async load(filename, options) {
@@ -50,8 +50,8 @@ export class AccountStore extends EventEmitter {
     if (!this.record || typeof username !== 'string' || typeof password !== 'string' || this.verifying >= 4) return null;
     this.verifying++;
     try {
-      const candidate = await derive(password, this.record.salt, 64);
-      if (!timingSafeEqual(candidate, Buffer.from(this.record.hash, 'hex')) || username !== this.record.username) return null;
+      const record = this.record, candidate = await derive(password, record.salt, 64);
+      if (record !== this.record || !timingSafeEqual(candidate, Buffer.from(record.hash, 'hex')) || username !== record.username) return null;
       for (const [id, session] of this.sessions) if (session.expires <= this.now()) this.revoke(id);
       if (this.sessions.size >= 128) this.revoke(this.sessions.keys().next().value);
       const token = randomBytes(32).toString('hex');
@@ -60,6 +60,28 @@ export class AccountStore extends EventEmitter {
       try { await this.persistSessions(); } catch (error) { this.sessions.delete(this.sessionId(token)); throw error; }
       return session;
     } finally { this.verifying--; }
+  }
+  change(token, currentPassword, username, password) {
+    const task = this.changes.catch(() => {}).then(async () => {
+      if (!this.session(token) || typeof currentPassword !== 'string') return null;
+      if (username !== undefined && typeof username !== 'string' || password !== undefined && typeof password !== 'string') throw Error('账号和密码必须是文本');
+      const old = this.record, candidate = await derive(currentPassword, old.salt, 64);
+      if (!timingSafeEqual(candidate, Buffer.from(old.hash, 'hex')) || !this.session(token)) return null;
+      const salt = randomBytes(32).toString('hex');
+      const nextPassword = password === undefined ? currentPassword : password;
+      const record = { username: username === undefined ? old.username : username, role: 'admin', salt, hash: (await derive(nextPassword, salt, 64)).toString('hex') };
+      if (this.filename) {
+        await writeFile(`${this.filename}.tmp`, JSON.stringify(record, null, 2), { mode: 0o600 });
+        await rename(`${this.filename}.tmp`, this.filename);
+      }
+      this.record = record;
+      const ids = [...this.sessions.keys()]; this.sessions.clear();
+      for (const id of ids) this.emit('revoked', id);
+      // The new account hash also invalidates any stale session file after a crash.
+      await this.persistSessions();
+      return this.login(record.username, nextPassword);
+    });
+    this.changes = task; return task;
   }
   session(token) {
     const session = this.sessions.get(this.sessionId(token));

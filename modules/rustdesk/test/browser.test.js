@@ -24,6 +24,7 @@ test('module page renders authenticated shared settings, exports configuration a
   server = http.createServer(async (req, res) => {
     const pathname = new URL(req.url, 'http://local').pathname;
     if (await instance.handle(req, res, pathname)) return;
+    if (pathname === '/ui.css' || pathname === '/ui.js') { res.writeHead(200, { 'Content-Type': pathname.endsWith('.css') ? 'text/css' : 'text/javascript' }); res.end(await readFile(new URL(`../../../public${pathname}`, import.meta.url))); return; }
     const asset = assets[pathname]; if (!asset) { res.writeHead(404); res.end(); return; }
     res.writeHead(200, { 'Content-Type': asset[1] }); res.end(await readFile(new URL(`../public/${asset[0]}`, import.meta.url)));
   });
@@ -38,6 +39,7 @@ test('module page renders authenticated shared settings, exports configuration a
   assert.equal(await page.locator('#id-server').inputValue(), `127.0.0.1:${port}`);
   assert.equal(await page.locator('#nat-warning').isVisible(), true);
   assert.equal(await page.locator('#open-client').isDisabled(), true);
+  assert.deepEqual(await page.evaluate(() => ({ bg: getComputedStyle(document.body).backgroundColor, header: document.querySelector('header').getBoundingClientRect().height, brand: document.querySelector('.brand small').textContent })), { bg: 'rgb(13, 16, 23)', header: 56, brand: 'ALL THE BEST' });
   const downloadPromise = page.waitForEvent('download'); await page.locator('#export-config').click();
   const download = await downloadPromise;
   assert.equal(download.suggestedFilename(), 'rustdesk-public-config.json');
@@ -45,6 +47,11 @@ test('module page renders authenticated shared settings, exports configuration a
   assert.equal(exported.configuration.idServer, `127.0.0.1:${port}`);
   await mkdir('test-results/atb', { recursive: true });
   await page.screenshot({ path: 'test-results/atb/rustdesk-desktop.png', fullPage: true });
+  for (const width of [360, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `RustDesk overflows at ${width}`);
+  }
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
   await page.screenshot({ path: 'test-results/atb/rustdesk-mobile.png', fullPage: true });

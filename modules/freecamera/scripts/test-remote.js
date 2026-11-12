@@ -24,6 +24,7 @@ async function launch() {
 try {
  desktop=await launch(); let page=await desktop.firstWindow();
  await page.waitForURL("**/platform*"); await page.goto(`https://127.0.0.1:${localPort}/?mode=viewer`);
+ await page.locator('#module-settings').evaluate(details => { details.open = true; });
  await page.locator('#connection-settings').click({timeout:5000});
  await page.waitForURL('**/desktop/connect.html');
  await page.locator('#remote-address').fill(origin);
@@ -52,6 +53,7 @@ try {
  const recording=path.join(output,'switch-recording.webm');
  await desktop.evaluate(({dialog},filename)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:filename});},recording);
  await page.locator('#record').click();await page.waitForFunction(()=>document.querySelector('#record').textContent==='停止录像');await page.waitForTimeout(1200);
+ await page.locator('#module-settings').evaluate(details => { details.open = true; });
  await page.locator('#connection-settings').click();await page.waitForURL('**/desktop/connect.html');
  assert.ok((await readFile(recording)).length>500,'opening connection settings must finish the active recording');
  await page.locator('#connect-remote').click();await page.waitForURL(`${origin}/platform*`); await page.goto(`${origin}/?mode=viewer`);

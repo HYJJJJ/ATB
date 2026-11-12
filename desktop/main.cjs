@@ -229,8 +229,8 @@ async function openWindow() {
   window = new BrowserWindow({
     title: 'ATB', width: 1240, height: 860, minWidth: 860, minHeight: 620,
     titleBarStyle: 'hidden',
-    titleBarOverlay: { color: '#0b101d', symbolColor: '#edf2ff', height: 48 },
-    backgroundColor: '#0b1116', show: false,
+    titleBarOverlay: { color: '#00000000', symbolColor: '#e7ebf2', height: 36 },
+    backgroundColor: '#0d1017', show: false,
     webPreferences: { additionalArguments: [`--atb-modules=${encodeURIComponent(JSON.stringify(nativeModules.ids))}`], preload: path.join(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true, backgroundThrottling: false },
   });
   const webContents = window.webContents;

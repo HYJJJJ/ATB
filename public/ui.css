@@ -1,0 +1,4 @@
+:root{color-scheme:dark;--atb-bg:#0d1017;--atb-panel:#151b27;--atb-raised:#202a3a;--atb-line:#ffffff14;--atb-text:#e9edf5;--atb-muted:#9ca9bd;--atb-accent:#dce4ef;--atb-ink:#182131}
+html,body{background:var(--atb-bg)}body.atb-ready{animation:atb-arrive 240ms ease-out both}html.atb-leaving body{opacity:0;transform:translateY(-4px);transition:opacity 120ms ease,transform 120ms ease}
+@keyframes atb-arrive{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){body.atb-ready{animation:none}html.atb-leaving body{transform:none;transition:none}}

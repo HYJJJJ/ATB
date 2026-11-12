@@ -46,7 +46,7 @@ try {
   });
   await page.reload(); await page.locator('#login').waitFor();
   await page.locator('[name=username]').fill('admin'); await page.locator('[name=password]').fill('1'); await page.locator('[name=confirm]').fill('1'); await page.locator('#login-form button').click(); await page.locator('#workspace').waitFor();
-  await page.locator('[data-page=model]').click(); await page.locator('#base-url').fill('https://example.com/v1'); await page.locator('#model').fill('test-model'); await page.locator('#api-key').fill('test-placeholder'); await page.locator('#model-form [type=submit]').click(); await page.waitForFunction(() => document.querySelector('#model-state').textContent === '已保存');
+  await page.locator('[data-page=model]').click(); await page.locator('#api-source').selectOption('custom'); await page.locator('#base-url').fill('https://example.com/v1'); await page.locator('#model').fill('test-model'); await page.locator('#api-key').fill('test-placeholder'); await page.locator('#model-form [type=submit]').click(); await page.waitForFunction(() => document.querySelector('#model-state').textContent === '已保存');
   let requests = 0;
   const modelConfig = liveModel ? (await (await import('../../../server/shared-settings.js')).SharedSettings.load(path.join(root, 'data'))).get('ai') : null;
   await page.route('**/api/assistant/chat', async route => {

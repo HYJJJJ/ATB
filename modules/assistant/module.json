@@ -2,7 +2,7 @@
   "id": "assistant",
   "name": "智能助手",
   "description": "模型对话、角色设定、长期记忆与本机语音",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "apiVersion": 1,
   "entry": "/modules/assistant/",
   "server": "server/index.js",

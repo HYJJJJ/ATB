@@ -15,3 +15,5 @@ From the project root:
 - `node modules/freecamera/scripts/test-desktop.js`
 
 Desktop code receives validated calls through the generic `atbDesktop.invokeModule('freecamera', action, options)` bridge. The browser adapter lives in `public/desktop-bridge.js`; the platform preload contains no camera methods. Suspending the module flushes recordings and releases native compute. Camera shutdown exposes `window.atbPrepareClose` and the legacy `window.freecameraPrepareClose` alias.
+
+Start the platform from the project root using `Start-ATB.cmd` or `Start-ATB-Desktop.cmd`, then open FreeCamera from the workspace. Desktop service selection is available in the camera page under 摄像头设置 → 连接设置.

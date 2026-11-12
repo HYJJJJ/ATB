@@ -36,6 +36,16 @@ test('voice settings survive restart and do not accept arbitrary synthesis setti
   assert.equal((await restarted.settings()).autoListen, false);
 });
 
+test('synthesis-only leases work without recognition models or enabling microphone conversation', async t => {
+  const voice = await fixture(t, { verifyInstallation: true });
+  const status = await voice.status();
+  assert.equal(status.available, false); assert.equal(status.synthesisAvailable, true);
+  const lease = await voice.open('reader', { mode: 'synthesis' });
+  const audio = await voice.speak('reader', { leaseId: lease.leaseId, text: '你好' });
+  assert.equal(audio.mime, 'audio/mpeg'); assert.ok(audio.audio);
+  await assert.rejects(voice.transcribe('reader', { leaseId: lease.leaseId, pcm: Buffer.alloc(16000).toString('base64') }), /识别/);
+});
+
 test('voice owns a single lease, validates PCM, and kills the worker when disabled', async t => {
   const voice = await fixture(t);
   await voice.configure({ enabled: true });

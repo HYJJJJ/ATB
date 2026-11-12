@@ -6,20 +6,71 @@ export function createAssistantVoice({ api, sendMessage, canChat, onState, onErr
   let phase = 'off', collector, lastActivity = 0;
   const setState = (next, text) => { phase = next; onState?.({ phase: next, active, text }); };
   const call = (action, options = {}, signal) => native?.voice ? native.voice(action, options) : api(`/api/assistant/voice/${action}`, action === 'status' ? undefined : options, signal);
-  function stopPlayback() { if (audio) { audio.pause(); audio.removeAttribute('src'); audio.load(); audio = null; } if (audioUrl) URL.revokeObjectURL(audioUrl); audioUrl = null; playbackDone?.(); playbackDone = null; }
+  function stopPlayback() { if (audio) { audio.onended = audio.onerror = null; audio.pause(); audio.removeAttribute('src'); audio.load(); audio = null; } if (audioUrl) URL.revokeObjectURL(audioUrl); audioUrl = null; globalThis.speechSynthesis?.cancel(); playbackDone?.(false); playbackDone = null; }
   async function play(result, version) {
     if (version !== generation) return;
-    const bytes = Uint8Array.from(atob(result.audio), char => char.charCodeAt(0));
+    if (!result?.audio || result.mime !== 'audio/mpeg') throw Error('语音服务未返回有效音频');
+    let bytes; try { bytes = Uint8Array.from(atob(result.audio), char => char.charCodeAt(0)); } catch { throw Error('语音服务未返回有效音频'); }
     audioUrl = URL.createObjectURL(new Blob([bytes], { type: result.mime })); const element = new Audio(audioUrl); audio = element;
-    await new Promise((resolve, reject) => {
-      playbackDone = resolve; element.onended = resolve; element.onerror = () => reject(Error('语音播放失败'));
-      element.play().catch(() => reject(Error('无法播放语音，请检查声音输出并重新开始')));
-    });
-    if (version === generation) stopPlayback();
+    try {
+      return await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(Error('语音播放超时，请检查声音输出')), 120000);
+        const finish = value => { clearTimeout(timeout); resolve(value); };
+        const fail = message => { clearTimeout(timeout); reject(Error(message)); };
+        playbackDone = finish; element.onended = () => finish(true); element.onerror = () => fail('语音播放失败，请检查声音输出');
+        element.play().catch(() => fail('无法播放语音，请允许声音播放并检查输出设备'));
+      });
+    } finally { if (version === generation) stopPlayback(); }
+  }
+  async function systemRead(text, version) {
+    if (!globalThis.speechSynthesis || !globalThis.SpeechSynthesisUtterance) throw Error('当前浏览器没有可用朗读服务，请使用桌面端或启用系统语音');
+    for (const chunk of speechChunks(text)) {
+      if (version !== generation) return false;
+      const completed = await new Promise((resolve, reject) => {
+        const utterance = new SpeechSynthesisUtterance(chunk); utterance.lang = 'zh-CN';
+        const voice = speechSynthesis.getVoices().find(item => item.lang.toLowerCase().startsWith('zh'));
+        if (voice) utterance.voice = voice;
+        utterance.rate = Math.max(0.5, 1 + Number(settings?.rate || 0) / 100);
+        const timer = setTimeout(() => reject(Error('系统语音未完成播放，请检查系统音色和声音输出')), 120000);
+        playbackDone = value => { clearTimeout(timer); resolve(value); };
+        utterance.onend = () => { clearTimeout(timer); resolve(true); };
+        utterance.onerror = event => { clearTimeout(timer); if (version !== generation) resolve(false); else reject(Error(`系统语音播放失败（${event.error || 'unknown'}），请检查系统音色和声音输出`)); };
+        speechSynthesis.speak(utterance);
+      });
+      if (!completed || version !== generation) return false;
+    }
+    return true;
+  }
+  async function read(text) {
+    if (!String(text || '').trim()) throw Error('没有可朗读的文字');
+    const version = generation + 1;
+    await stop(); if (version !== generation) return false;
+    active = true; controller = new AbortController();
+    setState('synthesizing', '正在准备朗读…');
+    try {
+      const status = await call('status'); if (version !== generation) return false; settings = status.settings;
+      if (!(status.synthesisAvailable ?? status.available)) {
+        setState('speaking', '系统语音 · 正在本机播放'); return await systemRead(text, version);
+      }
+      lease = crypto.randomUUID();
+      const opened = await call('open', { leaseId: lease, mode: 'synthesis' }, controller.signal);
+      if (version !== generation) { await call('close', { leaseId: opened.leaseId }); return false; }
+      lease = opened.leaseId;
+      heartbeat = setInterval(() => { if (version === generation) void call('heartbeat', { leaseId: opened.leaseId }).catch(error => { if (version === generation) { onError?.(error.message); void stop(); } }); }, 3000);
+      for (const chunk of speechChunks(text)) {
+        setState('synthesizing', '在线 EdgeTTS · 正在生成语音…');
+        const result = await call('speak', { leaseId: opened.leaseId, text: chunk }, controller.signal);
+        if (version !== generation) return false;
+        setState('speaking', '在线 EdgeTTS · 正在本机播放');
+        if (!await play(result, version) || version !== generation) return false;
+      }
+      return true;
+    } catch (error) { if (version !== generation || error.name === 'AbortError') return false; throw error; }
+    finally { if (version === generation) await stop(); }
   }
   async function transcribe(pcm) {
     const version = generation; collector.reset(); lastActivity = Date.now(); controller = new AbortController();
-    setState('transcribing', '正在本机识别…');
+    setState('transcribing', '正在识别语音…');
     try {
       const result = await call('transcribe', { leaseId: lease, pcm: pcmBase64(pcm) }, controller.signal);
       if (version !== generation || !active) return;
@@ -53,16 +104,17 @@ export function createAssistantVoice({ api, sendMessage, canChat, onState, onErr
     stream?.getTracks().forEach(track => track.stop()); stream = null;
     const oldContext = context; context = null; if (oldContext) await oldContext.close().catch(() => {});
     if (oldLease) await call('close', { leaseId: oldLease }).catch(() => {});
-    if (version === generation) setState('off', '语音已暂停 · 模型已释放');
+    if (version === generation) setState('off', '语音已暂停');
   }
   async function start() {
-    await stop();
+    const version = generation + 1;
+    await stop(); if (version !== generation) return;
     if (!canChat()) throw Error('请先配置可用的对话模型');
-    const version = ++generation; active = true; setState('loading', '正在加载本机语音模型…');
+    active = true; setState('loading', '正在加载语音识别模型…');
     try {
       const status = await call('status'); if (version !== generation) return;
       settings = status.settings;
-      if (!status.available) throw Error('本机语音运行时尚未安装；云端网页需要本机语音服务，请使用已初始化的桌面端');
+      if (!status.available) throw Error('语音识别运行时尚未安装，请使用已初始化的桌面端或服务端运行时');
       if (!settings.enabled) settings = await call('settings', { enabled: true });
       if (version !== generation) return;
       lease = crypto.randomUUID();
@@ -91,21 +143,8 @@ export function createAssistantVoice({ api, sendMessage, canChat, onState, onErr
     get active() { return active; },
     status: () => call('status'),
     async configure(options) { const next = await call('settings', options); settings = next; if (!next.enabled) await stop(); return next; },
-    start, stop,
-    async interrupt() { await stop(); await start(); },
-    async preview() {
-      if (active) throw Error('请先暂停语音对话再试听音色');
-      const version = ++generation; active = true; setState('loading', '正在生成试听语音…');
-      try {
-        const status = await call('status'); if (version !== generation) return;
-        if (!status.settings.enabled) throw Error('请先开启并保存语音设置');
-        lease = crypto.randomUUID();
-        const opened = await call('open', { leaseId: lease });
-        if (version !== generation) { await call('close', { leaseId: opened.leaseId }); return; }
-        lease = opened.leaseId;
-        heartbeat = setInterval(() => { if (version === generation) void call('heartbeat', { leaseId: opened.leaseId }).catch(() => {}); }, 3000);
-        const result = await call('speak', { leaseId: opened.leaseId, text: '你好，我是你的家庭助手，有什么可以帮你？' }); await play(result, version);
-      } finally { if (version === generation) await stop(); }
-    },
+    start, stop, read,
+    interrupt: start,
+    preview: () => read('你好，我是你的助手，有什么可以帮你？'),
   };
 }

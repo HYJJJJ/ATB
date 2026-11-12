@@ -6,6 +6,8 @@ data/
 desktop-profile/
 test-results/
 exports/
+# Local design explorations and rendered comparisons are not runtime source.
+/designs/
 release*/
 dist/
 /assistant/

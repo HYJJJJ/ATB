@@ -20,26 +20,28 @@ def emit(result):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-dir", required=True)
+    parser.add_argument("--synthesis-only", action="store_true")
     args = parser.parse_args()
     try:
-        import numpy as np
-        import sherpa_onnx
         import edge_tts
-        model_dir = Path(args.model_dir)
-        recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
-            model=str(model_dir / "model.int8.onnx"),
-            tokens=str(model_dir / "tokens.txt"),
-            num_threads=2, sample_rate=16000, feature_dim=80,
-            decoding_method="greedy_search", debug=False, use_itn=True,
-            provider="cpu",
-        )
-        vad_config = sherpa_onnx.VadModelConfig()
-        vad_config.silero_vad.model = str(model_dir / "silero_vad.onnx")
-        vad_config.silero_vad.min_speech_duration = 0.2
-        vad_config.silero_vad.min_silence_duration = 0.5
-        vad_config.sample_rate = 16000
-        vad_config.num_threads = 1
-        vad = sherpa_onnx.VoiceActivityDetector(vad_config, buffer_size_in_seconds=31)
+        if not args.synthesis_only:
+            import numpy as np
+            import sherpa_onnx
+            model_dir = Path(args.model_dir)
+            recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
+                model=str(model_dir / "model.int8.onnx"),
+                tokens=str(model_dir / "tokens.txt"),
+                num_threads=2, sample_rate=16000, feature_dim=80,
+                decoding_method="greedy_search", debug=False, use_itn=True,
+                provider="cpu",
+            )
+            vad_config = sherpa_onnx.VadModelConfig()
+            vad_config.silero_vad.model = str(model_dir / "silero_vad.onnx")
+            vad_config.silero_vad.min_speech_duration = 0.2
+            vad_config.silero_vad.min_silence_duration = 0.5
+            vad_config.sample_rate = 16000
+            vad_config.num_threads = 1
+            vad = sherpa_onnx.VoiceActivityDetector(vad_config, buffer_size_in_seconds=31)
     except Exception:
         emit({"type": "startup-error"})
         return 1
@@ -68,6 +70,8 @@ def main():
         try:
             message = json.loads(line)
             if message["action"] == "transcribe":
+                if args.synthesis_only:
+                    raise ValueError("recognition-not-open")
                 pcm = base64.b64decode(message["pcm"], validate=True)
                 if not pcm or len(pcm) > 960000 or len(pcm) % 2:
                     raise ValueError("invalid-audio")

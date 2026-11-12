@@ -34,7 +34,7 @@ export class VoiceRuntime {
     this.#timer = setInterval(() => { if (this.#lease && this.#child && !this.#opening && Date.now() - this.#lease.beat > this.leaseMs) void this.close(); }, Math.min(1000, this.leaseMs));
     this.#timer.unref();
   }
-  get state() { return { status: this.#child ? !this.#lease ? 'stopping' : this.#opening ? 'loading' : this.#pending.size ? 'busy' : 'on' : this.#lease ? 'loading' : 'off', pid: this.#workerPid || this.#child?.pid || null, backend: 'CPU', model: 'SenseVoice INT8', synthesis: 'EdgeTTS' }; }
+  get state() { return { status: this.#child ? !this.#lease ? 'stopping' : this.#opening ? 'loading' : this.#pending.size ? 'busy' : 'on' : this.#lease ? 'loading' : 'off', pid: this.#workerPid || this.#child?.pid || null, backend: 'CPU', model: this.#lease?.mode === 'synthesis' ? null : 'SenseVoice INT8', mode: this.#lease?.mode || null, synthesis: 'EdgeTTS' }; }
   async settings() {
     this.#settings ??= (async () => {
       try { return { ...defaults, ...JSON.parse(await readFile(path.join(this.dataDir, 'voice-settings.json'), 'utf8')) }; }
@@ -42,10 +42,10 @@ export class VoiceRuntime {
     })();
     return { ...await this.#settings, voices };
   }
-  async installed() {
-    try { if (this.verifyInstallation) await Promise.all([access(this.command), access(path.join(this.modelDir, 'model.int8.onnx')), access(path.join(this.modelDir, 'tokens.txt')), access(path.join(this.modelDir, 'silero_vad.onnx'))]); return true; } catch { return false; }
+  async installed(mode = 'conversation') {
+    try { if (this.verifyInstallation) await Promise.all([access(this.command), ...(mode === 'synthesis' ? [] : [access(path.join(this.modelDir, 'model.int8.onnx')), access(path.join(this.modelDir, 'tokens.txt')), access(path.join(this.modelDir, 'silero_vad.onnx'))])]); return true; } catch { return false; }
   }
-  async status() { return { ...this.state, available: await this.installed(), settings: await this.settings(), setupDataDir: this.dataDir }; }
+  async status() { return { ...this.state, available: await this.installed(), synthesisAvailable: await this.installed('synthesis'), settings: await this.settings(), setupDataDir: this.dataDir }; }
   configure(patch) {
     const task = this.#writes.catch(() => {}).then(async () => {
       if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw Error('语音设置无效');
@@ -67,19 +67,20 @@ export class VoiceRuntime {
     if (!this.#lease || this.#lease.owner !== owner || this.#lease.id !== leaseId) throw Error('语音连接已失效，请重新开始');
     this.#lease.beat = Date.now();
   }
-  async open(owner, { leaseId = randomUUID() } = {}) {
+  async open(owner, { leaseId = randomUUID(), mode = 'conversation' } = {}) {
     this.#ensureTimer();
+    if (!['conversation', 'synthesis'].includes(mode)) throw Error('语音模式无效');
     if (typeof leaseId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(leaseId)) throw Error('语音连接标识无效');
     if (this.#cancelled.get(`${owner}:${leaseId}`) > Date.now()) throw Error('语音启动已取消');
     if (this.#lease || this.#child) throw Error('另一窗口正在使用或释放本机语音');
-    const epoch = ++this.#epoch, lease = { id: leaseId, owner, beat: Date.now() };
+    const epoch = ++this.#epoch, lease = { id: leaseId, owner, beat: Date.now(), mode };
     this.#lease = lease;
     try {
-      if (!(await this.settings()).enabled) throw Error('请先开启语音功能');
-      if (!(await this.installed())) throw Error('本机语音运行时尚未安装，请运行语音初始化脚本');
+      if (mode === 'conversation' && !(await this.settings()).enabled) throw Error('请先开启语音功能');
+      if (!(await this.installed(mode))) throw Error('语音运行时尚未安装，请运行语音初始化脚本');
       if (epoch !== this.#epoch || this.#lease !== lease) throw Error('语音启动已停止');
     } catch (error) { if (this.#lease === lease) this.#lease = null; throw error; }
-    const child = spawn(this.command, [this.worker, '--model-dir', this.modelDir], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], env: workerEnvironment() });
+    const child = spawn(this.command, [this.worker, '--model-dir', this.modelDir, ...(mode === 'synthesis' ? ['--synthesis-only'] : [])], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], env: workerEnvironment() });
     this.#child = child; child.stderr.resume(); child.stdin.on('error', () => {});
     const lines = createInterface({ input: child.stdout });
     let readyResolve, readyReject, readyTimer;
@@ -96,7 +97,7 @@ export class VoiceRuntime {
       if (line.length > 8 * 1024 * 1024) { child.kill(); return; }
       let result; try { result = JSON.parse(line); } catch { return; }
       if (result.type === 'ready') { if (Number.isInteger(result.pid) && result.pid > 0) this.#workerPid = result.pid; readyResolve(); return; }
-      if (result.type === 'startup-error') { readyReject(Error('本地语音模型加载失败，请重新初始化运行时')); return; }
+      if (result.type === 'startup-error') { readyReject(Error(mode === 'synthesis' ? '在线合成组件加载失败，请重新初始化语音运行时' : '本地语音模型加载失败，请重新初始化运行时')); return; }
       const pending = this.#pending.get(result.id); if (!pending || this.#child !== child) return;
       this.#pending.delete(result.id); clearTimeout(pending.timer);
       result.ok ? pending.resolve(result) : pending.reject(Error(result.action === 'speak' ? '在线语音合成失败，请检查网络后重试' : '本地语音识别失败，请重试'));
@@ -120,6 +121,7 @@ export class VoiceRuntime {
   }
   async transcribe(owner, { leaseId, pcm }) {
     this.#authorize(owner, leaseId);
+    if (this.#lease.mode === 'synthesis') throw Error('当前会话仅支持朗读，请开始语音对话后使用识别');
     if (typeof pcm !== 'string' || pcm.length < 1600 || pcm.length > 1280000 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(pcm)) throw Error('音频格式或长度无效，最长30秒');
     const bytes = Buffer.from(pcm, 'base64'); if (bytes.length % 2 || bytes.length > 960000) throw Error('音频格式无效');
     const result = await this.#request('transcribe', { pcm });
@@ -132,7 +134,7 @@ export class VoiceRuntime {
     const settings = await this.settings();
     const result = await this.#request('speak', { text, voice: settings.voice, rate: settings.rate });
     this.#authorize(owner, leaseId);
-    if (typeof result.audio !== 'string' || result.audio.length > 8 * 1024 * 1024 || result.mime !== 'audio/mpeg') throw Error('语音服务未返回有效音频');
+    if (typeof result.audio !== 'string' || !result.audio.length || result.audio.length > 8 * 1024 * 1024 || result.mime !== 'audio/mpeg') throw Error('语音服务未返回有效音频');
     return { audio: result.audio, mime: result.mime };
   }
   async close(owner, leaseId) {

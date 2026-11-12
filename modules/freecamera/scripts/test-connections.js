@@ -27,11 +27,14 @@ async function launch() {
   page.setDefaultTimeout(8000); page.setDefaultNavigationTimeout(8000);
 }
 async function settings() {
+  await page.locator('#module-settings').evaluate(details => { details.open = true; });
   await page.locator('#connection-settings').click();
   await page.waitForURL('**/desktop/connect.html');
   await page.waitForFunction(() => !document.querySelector('#local-url').textContent.includes('undefined') && !!document.querySelector('#local-url').textContent);
 }
 async function mouse(button = 'back') {
+  // Distinct user gestures must be outside the shell's 180ms duplicate-event guard.
+  await page.waitForTimeout(200);
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 300, y: 250, button, buttons: button === 'back' ? 8 : 16, clickCount: 1 });
   await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 300, y: 250, button, buttons: 0, clickCount: 1 });
@@ -39,8 +42,15 @@ async function mouse(button = 'back') {
 }
 async function viewer(expected = origin) {
   await page.waitForURL(url => url.origin === expected && ["/platform", "/"].includes(url.pathname));
+  // The document can be interactive before BrowserWindow.loadURL resolves.
+  // Let the native connection transaction finish before the test navigates again.
+  await page.waitForLoadState('load');
+  await desktop.evaluate(async ({ BrowserWindow }) => {
+    const contents = BrowserWindow.getAllWindows()[0].webContents;
+    if (contents.isLoadingMainFrame()) await new Promise(resolve => contents.once('did-stop-loading', resolve));
+  });
   if (new URL(page.url()).pathname === "/platform") await page.goto(`${expected}/?mode=viewer`);
-  await page.locator('#connection-settings').waitFor({ state: 'visible' });
+  await page.locator('#module-settings').waitFor({ state: 'visible' });
   await page.evaluate(async () => (await import("/desktop-bridge.js")).cameraDesktop.detectionState());
 }
 async function importCa(filename) {
@@ -58,10 +68,12 @@ try {
   await mouse(); await mouse('forward'); await viewer();
   await settings(); await page.goBack();
   assert.match(page.url(), /\/desktop\/connect.html$/, 'raw history cannot cross between settings and hosted pages');
+  await page.waitForTimeout(200);
   await desktop.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0].emit('app-command', { preventDefault() {} }, 'browser-backward'); });
   await viewer();
   await settings();
   await page.locator('#remote-address').fill('saved-host.test:9443');
+  await page.waitForTimeout(200);
   await page.keyboard.press('Alt+ArrowLeft'); await page.waitForURL(`${origin}/?mode=viewer`);
   await settings();
   assert.equal(await page.locator('#remote-address').inputValue(), 'saved-host.test:9443', 'unsubmitted input must survive returning to the viewer');

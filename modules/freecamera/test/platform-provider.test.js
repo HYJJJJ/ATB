@@ -39,7 +39,10 @@ test('declared camera background activates through the platform generic bridge a
   await page.waitForFunction(() => document.querySelector('#workspace')?.hidden === false);
   await page.waitForFunction(() => window.testComputeOpened === true);
   assert.ok(commands.some(command => command.id === 'freecamera' && command.action === 'compute-open'));
-  await page.locator("#logout").click();
+  await page.evaluate(async () => {
+    await fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    window.dispatchEvent(new Event('online'));
+  });
   await page.waitForFunction(() => document.querySelector("#login")?.hidden === false && window.testComputeClosed === true);
   assert.ok(commands.some(command => command.action === 'compute-close' && command.options.leaseId === 'background-test-lease'));
   assert.deepEqual(errors, []);

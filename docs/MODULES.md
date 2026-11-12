@@ -9,7 +9,7 @@
   "id": "example",
   "name": "示例模块",
   "description": "模块用途",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "apiVersion": 1,
   "entry": "/modules/example/",
   "server": "server/index.js",
@@ -30,13 +30,19 @@ Context：
 - `dataDir`：平台数据根目录，已有监控 devices.json 和 assistant 目录保持兼容。
 - `shared`：平台 SharedSettings 实例，`get(section)` 返回克隆，`update(section, mutator)` 串行写入并返回新值；mutator 同步返回替换值。不存在返回 undefined。写入原子替换。
 - `config`：已验证的 lanIp/httpsPort/httpPort/certDir/publicOrigin/publicIp/tailscaleAddresses/certRootName；保留 relayPort/relayPublicPort/detector 可选注入作为旧监控配置兼容。任何模块专属字段必须由该模块自己验证，缺模块时不要求这些字段。
-- `platform`：`{name:'ATB',fullName:'All The Best',version:'0.6.0'}`。
+- `platform`：`{name:'ATB',fullName:'All The Best',version:'0.7.0'}`。
 
 返回 `{handle?,attach?,close?,config?,transformAsset?}`。`handle(req,res,pathname,requestConfig)` 返回 true 表示已处理。`attach(secureServer)` 在主 HTTP 监听前调用，可创建 WS/额外监听；失败时必须自行回收部分资源，平台继续回收已创建实例。`close()` 幂等回收自身全部运行时资源。
 
 `config` 为公开 `/api/config` 的兼容附加字段，不得含秘密。`transformAsset(filename,content,requestConfig)` 可替换模块 HTML 模板，文件名为 manifest 中的模块相对路径，字符串输入和返回；只有文本资源执行。旧摄像头 `/?mode=camera|viewer` 的 `/` alias 由 camera 模块 handle 按 requestConfig 服务；平台 `/` 默认重定向 `/platform`。核心公共页面只包含平台代码。
 
-共享配置 `data/platform/settings.json` 由核心维护。`server` 分组存 publicHost 和 `rustdesk: {idPort,relayPort,natPort,publicKey,deployedVersion}`；`ai` 分组存提供者连接配置（provider/baseUrl/protocol/model/apiKey）；助手 persona/memory 保留其平台业务数据。旧 API 配置在共享 ai 不存在时才导入，原子提交后不再回读旧密钥；保留旧文件用于回滚。普通平台接口只返回公开 server 设置与 hasApiKey，不回显任何密钥。模块不得把 SSH root 凭据作为平台通用配置。
+共享配置 `data/platform/settings.json` 由核心维护。`server` 分组存 publicHost 和 `rustdesk: {idPort,relayPort,natPort,publicKey,deployedVersion}`；`ai` 分组存提供者连接配置（provider/baseUrl/protocol/model/selectedModels/apiKey）；助手 persona/memory 保留其平台业务数据。旧 API 配置在共享 ai 不存在时才导入，原子提交后不再回读旧密钥；保留旧文件用于回滚。普通平台接口只返回公开 server 设置与 hasApiKey，不回显任何密钥。模块不得把 SSH root 凭据作为平台通用配置。
+
+核心提供认证后的 `GET/POST /api/platform/ai`、`POST /api/platform/ai/models` 和 `POST /api/platform/ai/test`；纯平台包同样可管理默认 AI 配置，不依赖助手目录。模型获取/测试可使用草稿配置且不会保存。留空密钥只保留相同规范化基础地址的旧密钥，改地址必须提供新密钥；`clearKey:true` 明确删除。
+
+需要 AI 的模块默认从 `shared.get('ai')` 读取有效配置，模块的自定义覆盖保存在自己数据目录。助手用 `apiSource:platform|custom` 切换，custom 配置保存在 `assistant/settings.json.ai`；修改自定义配置不修改平台默认值。可选模型保存在 `selectedModels`，对话请求的模型必须位于有效列表。后续模块遵循此继承方式，不复制或输出共享密钥。
+
+统一公共主题由核心 `/ui.css` 和 `/ui.js` 提供。模块保留自身样式，引用共同色值和过渡；有录屏/媒体收尾的页面通过 `atbPrepareClose` 自行管理离开流程，公共过渡不抢先导航。
 
 ## 桌面
 

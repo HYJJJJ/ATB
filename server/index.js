@@ -14,7 +14,7 @@ import { loadModules } from './modules.js';
 import { createPlatformRoutes } from './platform-routes.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const platform = { name: 'ATB', fullName: 'All The Best', version: '0.6.0' };
+const platform = { name: 'ATB', fullName: 'All The Best', version: '0.7.0' };
 function port(value, fallback) { const n = Number(value ?? fallback); if (!Number.isInteger(n) || n < 1 || n > 65535) throw Error('端口必须为 1–65535 的整数'); return n; }
 export async function startServers(options = {}) {
   const { lanIp = selectedIp(), httpsPort = port(process.env.HTTPS_PORT, 8443), httpPort = port(process.env.HTTP_PORT, 8080), certDir = process.env.CERT_DIR || path.join(root, 'certs'), dataDir = process.env.DATA_DIR || path.join(root, 'data'), modulesDir = process.env.ATB_MODULES_DIR || path.join(root, 'modules'), publicOrigin: suppliedOrigin = process.env.PUBLIC_ORIGIN || null } = options;

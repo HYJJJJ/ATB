@@ -73,13 +73,17 @@ for (const variant of ['full', 'core']) {
     await page.locator('#server-host').fill('example.com'); await page.locator('#server-form button').click();
     await page.waitForFunction(() => document.querySelector('#settings-result').textContent.includes('已保存'));
     checks.push('shared server settings start blank and save');
-    await page.locator('#connection').click(); await page.locator('#connect-local').waitFor({ state: 'visible' });
-    assert.match(await page.locator('#local-url').textContent(), /\/platform$/);
-    assert.equal(await page.locator('#remote-address').inputValue(), '');
-    assert.equal(await page.locator('#return-viewer').isVisible(), true);
-    await page.locator('#return-viewer').click(); await page.waitForURL('**/platform#settings');
-    checks.push('generic connection settings and exact page return');
+    assert.equal(await page.locator('#connection, #logout').count(), 0);
+    checks.push('compact platform navigation without connection or logout actions');
     if (variant === 'full') {
+      await page.goto(origin + '/modules/freecamera/?mode=viewer');
+      await page.locator('#module-settings').evaluate(details => { details.open = true; });
+      await page.locator('#connection-settings').click(); await page.locator('#connect-local').waitFor({ state: 'visible' });
+      assert.match(await page.locator('#local-url').textContent(), /\/platform$/);
+      assert.equal(await page.locator('#remote-address').inputValue(), '');
+      assert.equal(await page.locator('#return-viewer').isVisible(), true);
+      await page.locator('#return-viewer').click(); await page.waitForURL('**/modules/freecamera/?mode=viewer');
+      checks.push('camera-owned connection settings and exact page return');
       for (const module of discovered.modules) {
         await page.goto(origin + module.entry);
         assert.equal(await page.evaluate(() => document.body.innerText.length > 100), true, module.id);

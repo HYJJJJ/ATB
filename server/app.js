@@ -7,6 +7,8 @@ const files = new Map([
   ['/platform', ['platform.html', 'text/html; charset=utf-8']],
   ['/platform.js', ['platform.js', 'text/javascript; charset=utf-8']],
   ['/platform.css', ['platform.css', 'text/css; charset=utf-8']],
+  ['/ui.css', ['ui.css', 'text/css; charset=utf-8']],
+  ['/ui.js', ['ui.js', 'text/javascript; charset=utf-8']],
   ['/setup', ['setup.html', 'text/html; charset=utf-8']],
 ]);
 const emptyModules = { list: () => [], config: {}, asset() {}, async handle() { return false; } };
@@ -24,7 +26,7 @@ export function createHandler({ secure, certDir, lanIp, httpsPort, httpPort, acc
     let address = lanIp;
     try { const hostname = new URL(`http://${req.headers.host}`).hostname; if ([lanIp, ...tailscaleAddresses].includes(hostname)) address = hostname; } catch {}
     const base = publicOrigin || `https://${address}:${httpsPort}`;
-    const requestConfig = { ...modules.config, app: 'atb', version: '0.6.0', platformVersion: 2, modules: modules.list(), secure, base, lanIp, httpsPort, httpPort, ip: publicOrigin ? new URL(base).hostname : address, publicOrigin, certRootName, setupUrl: publicOrigin ? `${base}/setup` : `http://${address}:${httpPort}` };
+    const requestConfig = { ...modules.config, app: 'atb', version: '0.7.0', platformVersion: 2, modules: modules.list(), secure, base, lanIp, httpsPort, httpPort, ip: publicOrigin ? new URL(base).hostname : address, publicOrigin, certRootName, setupUrl: publicOrigin ? `${base}/setup` : `http://${address}:${httpPort}` };
     if (requestConfig.cameraUrl) requestConfig.cameraUrl = `${base}/?mode=camera`;
     if (requestConfig.viewerUrl) requestConfig.viewerUrl = `${base}/?mode=viewer`;
     try {

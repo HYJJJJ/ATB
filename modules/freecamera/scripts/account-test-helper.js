@@ -2,7 +2,7 @@ export const testCredentials = { username: 'admin', password: 'test-camera-passw
 export async function loginViewer(page, credentials = testCredentials) {
   if (new URL(page.url()).pathname === '/platform') await page.goto(new URL('/?mode=viewer', page.url()).href);
   await page.waitForFunction(() => document.querySelector('#auth-submit') && !document.querySelector('#auth-submit').disabled || !document.querySelector('#account-bar')?.hidden);
-  if (await page.locator('#account-bar').isVisible()) {
+  if (await page.locator('#account-bar').evaluate(bar => !bar.hidden)) {
     await page.locator('#pairing-options').evaluate(details => { details.open = true; }); return;
   }
   await page.locator('#auth-username').fill(credentials.username);

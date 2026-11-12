@@ -1,44 +1,21 @@
 import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
 import path from 'node:path';
 import { sessionToken } from '../../../server/accounts.js';
-import { normalizeBase, safeRequest } from './model-request.js';
+import { safeRequest } from './model-request.js';
+import { providers, aiDefaults, aiPatch, effectiveAi, visibleAi, AiError, modelAnswer, modelList } from '../../../server/ai-settings.js';
 import { getVoiceRuntime } from './voice-runtime.js';
 import { createVoiceRoutes } from './voice-routes.js';
 import { SharedSettings } from '../../../server/shared-settings.js';
 
-const providers = {
-  dashscope: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-  openai: 'https://api.openai.com/v1',
-};
-const defaults = { name: '小助手', prompt: '你是我的家庭智能助手，请自然、准确地回答。', provider: 'custom', baseUrl: '', protocol: 'chat', model: '', apiKey: '', memory: '' };
-class RequestError extends Error {
-  constructor(message, status = 400) { super(message); this.status = status; }
-}
+const defaults = { name: '小助手', prompt: '你是我的家庭智能助手，请自然、准确地回答。', ...aiDefaults, memory: '', apiSource: 'platform' };
+const RequestError = AiError;
 function text(value, limit, required = false) {
   if (typeof value !== 'string' || value.length > limit || (required && !value.trim())) throw new RequestError('设置内容无效或超出长度限制');
   return value;
 }
-function modelPatch(body, current) {
-  const provider = body.provider;
-  if (!['custom', 'dashscope', 'openai'].includes(provider)) throw new RequestError('请选择接口类型');
-  let baseUrl;
-  try { baseUrl = normalizeBase(provider === 'custom' ? body.baseUrl : providers[provider]); }
-  catch { throw new RequestError('请填写公网 HTTPS 基础地址，例如 https://example.com/v1'); }
-  const protocol = body.protocol ?? current.protocol ?? 'chat';
-  if (!['chat', 'responses'].includes(protocol)) throw new RequestError('请选择有效的接口协议');
-  if (body.apiKey !== undefined) text(body.apiKey, 1000);
-  if (body.clearKey !== undefined && typeof body.clearKey !== 'boolean') throw new RequestError('密钥设置无效');
-  const key = body.apiKey?.trim();
-  if (key && /[\r\n]/.test(key)) throw new RequestError('密钥不能包含换行');
-  return {
-    provider, baseUrl, protocol,
-    model: body.model === undefined ? current.model : text(body.model, 100).trim(),
-    apiKey: body.clearKey ? '' : key || (baseUrl === current.baseUrl ? current.apiKey : ''),
-  };
-}
 function visible(settings) {
-  const { name, prompt, provider, baseUrl, protocol, model, memory } = settings;
-  return { name, prompt, provider, baseUrl, protocol, model, memory, hasApiKey: Boolean(settings.apiKey) };
+  const { name, prompt, memory, apiSource } = settings;
+  return { name, prompt, memory, apiSource, ...visibleAi(settings) };
 }
 export async function createAssistantRoutes({ accounts, dataDir, shared, request = safeRequest }) {
   const dir = path.join(dataDir, 'assistant'), file = path.join(dir, 'settings.json');
@@ -49,11 +26,10 @@ export async function createAssistantRoutes({ accounts, dataDir, shared, request
   settings.baseUrl ||= providers[settings.provider] || '';
   shared ||= await SharedSettings.load(dataDir);
   if (shared.get('ai') === undefined) {
-    const { provider, baseUrl, protocol, model, apiKey } = settings;
-    await shared.update('ai', current => current === undefined ? { provider, baseUrl, protocol, model, apiKey } : current);
+    const { provider, baseUrl, protocol, model, selectedModels, apiKey } = settings;
+    await shared.update('ai', current => current === undefined ? effectiveAi({ provider, baseUrl, protocol, model, selectedModels, apiKey }) : current);
   }
-  // Only the shared AI section supplies provider credentials after migration.
-  const currentSettings = () => ({ ...defaults, name: settings.name, prompt: settings.prompt, memory: settings.memory, ...shared.get('ai') });
+  const currentSettings = () => ({ ...defaults, name: settings.name, prompt: settings.prompt, memory: settings.memory, ...effectiveAi(settings.apiSource === 'custom' ? settings.ai : shared.get('ai')), apiSource: settings.apiSource === 'custom' ? 'custom' : 'platform' });
   const voiceRoutes = createVoiceRoutes({ accounts, runtime: getVoiceRuntime(dir) });
   let writes = Promise.resolve(), closing = false;
   const active = new Map(), controllers = new Set();
@@ -61,13 +37,21 @@ export async function createAssistantRoutes({ accounts, dataDir, shared, request
     const task = writes.catch(() => {}).then(async () => {
       const scope = body.scope || 'all';
       if (!['model', 'persona', 'memory', 'all'].includes(scope)) throw new RequestError('未知的设置分组');
-      // Retain legacy fields only for rollback; all live AI reads come from shared.
+      // Legacy root AI fields remain available for rollback; custom overrides live under ai.
       const next = { ...settings };
       const changesModel = scope === 'model' || scope === 'all';
-      if (changesModel) modelPatch(body, currentSettings());
+      if (changesModel && body.apiSource !== undefined && !['platform', 'custom'].includes(body.apiSource)) throw new RequestError('请选择有效的模型配置来源');
       if (scope === 'persona' || scope === 'all') { next.name = text(body.name, 60, true).trim(); next.prompt = text(body.prompt, 4000); }
       if (scope === 'memory' || scope === 'all') next.memory = text(body.memory, 8000);
-      if (changesModel) await shared.update('ai', current => modelPatch(body, { ...defaults, ...current }));
+      if (changesModel) {
+        if (body.apiSource === 'platform') next.apiSource = 'platform';
+        else if (body.apiSource === 'custom' || settings.apiSource === 'custom' && body.apiSource === undefined) {
+          next.ai = aiPatch(body, settings.ai || {}); next.apiSource = 'custom';
+        } else {
+          // Pre-source clients edited the shared model settings through this endpoint.
+          await shared.update('ai', current => aiPatch(body, current)); next.apiSource = 'platform';
+        }
+      }
       await writeFile(`${file}.tmp`, JSON.stringify(next, null, 2), { mode: 0o600 });
       await rename(`${file}.tmp`, file); settings = next;
       return visible(currentSettings());
@@ -97,7 +81,11 @@ export async function createAssistantRoutes({ accounts, dataDir, shared, request
       if (!body || typeof body !== 'object' || Array.isArray(body)) throw new RequestError('请求格式无效');
       if (pathname.endsWith('/settings')) { reply(200, await update(body)); return true; }
       const saved = currentSettings(), current = { ...saved };
-      if (pathname.endsWith('/models') && body.provider !== undefined) Object.assign(current, modelPatch(body, saved));
+      if (pathname.endsWith('/models') || pathname.endsWith('/test')) Object.assign(current, aiPatch(body, saved));
+      if (pathname.endsWith('/chat') && body.model !== undefined) {
+        if (typeof body.model !== 'string' || !current.selectedModels.includes(body.model)) throw new RequestError('请从已选模型中选择对话模型');
+        current.model = body.model;
+      }
       if (!current.apiKey) throw new RequestError(current.baseUrl === saved.baseUrl ? '请填写 API 密钥' : '地址已更换，请为新接口填写密钥');
       const isModels = pathname.endsWith('/models');
       const isTest = pathname.endsWith('/test');
@@ -125,14 +113,10 @@ export async function createAssistantRoutes({ accounts, dataDir, shared, request
       try { result = await response.json(); } catch { throw new RequestError('服务商没有返回有效 JSON，请检查接口协议。', 502); }
       if (!accounts.session(token)) throw new RequestError('登录已过期，请重新登录', 401);
       if (isModels) {
-        if (!Array.isArray(result?.data)) throw new RequestError('服务商不支持标准模型列表，可手动填写模型名称。', 502);
-        const models = [...new Set(result.data.map(item => item?.id).filter(id => typeof id === 'string' && id.length > 0 && id.length <= 100))].sort().slice(0, 1000);
-        reply(200, { models }); return true;
+        reply(200, { models: modelList(result) }); return true;
       }
-      let answer = result?.choices?.[0]?.message?.content;
-      if (current.protocol === 'responses') answer = result?.output_text || result?.output?.filter(item => item?.type === 'message').flatMap(item => Array.isArray(item.content) ? item.content : []).filter(item => item?.type === 'output_text').map(item => item.text || '').join('');
-      if (typeof answer !== 'string' || !answer.trim()) throw new RequestError('模型没有返回文字回复，请检查模型是否支持文字对话。', 502);
-      reply(200, isTest ? { ok: true, model: current.model } : { reply: answer.slice(0, 16000) });
+      const answer = modelAnswer(result, current.protocol);
+      reply(200, isTest ? { ok: true, model: current.model } : { reply: answer });
     } catch (error) {
       reply(error instanceof RequestError ? error.status : 502, { error: error instanceof RequestError ? error.message : '连接模型服务失败或超时，请检查网络和接口设置。' });
     } finally {

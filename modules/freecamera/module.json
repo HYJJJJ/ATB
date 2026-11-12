@@ -2,7 +2,7 @@
   "id": "freecamera",
   "name": "FreeCamera",
   "description": "手机摄像头、实时观看、人物检测和本地录像",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "apiVersion": 1,
   "entry": "/modules/freecamera/",
   "server": "server/index.js",

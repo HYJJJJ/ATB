@@ -76,11 +76,19 @@ try {
       contentRight: header.querySelector('.local-tag').getBoundingClientRect().right,
       controlsLeft: available.x + available.width, windowWidth: innerWidth };
   });
-  assert.equal(titleBar.top, 0); assert.equal(titleBar.height, 48);
+  assert.equal(titleBar.top, 0); assert.equal(titleBar.height, 56);
   assert.equal(titleBar.drag, 'drag'); assert.equal(titleBar.brandDrag, 'no-drag');
   assert.ok(titleBar.controlsLeft < titleBar.windowWidth, 'native caption buttons must have reserved space');
   assert.ok(titleBar.contentRight <= titleBar.controlsLeft, 'header content must not overlap caption buttons');
   await page.screenshot({ path: path.join(output, 'titlebar.png') });
+  const nativeTitlebar = await desktop.evaluate(async ({ BrowserWindow, desktopCapturer }) => {
+    const win = BrowserWindow.getAllWindows()[0], [width, height] = win.getSize();
+    const sources = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width, height } });
+    return sources.find(source => source.id === win.getMediaSourceId())?.thumbnail.toPNG().toString('base64');
+  });
+  assert.ok(nativeTitlebar, 'capture this ATB window including native controls');
+  await writeFile(path.join(output, 'native-titlebar.png'), Buffer.from(nativeTitlebar, 'base64'));
+
   for (const [event, action, check] of [['maximize', 'maximize', 'isMaximized'], ['unmaximize', 'unmaximize', 'isNormal'], ['minimize', 'minimize', 'isMinimized'], ['restore', 'restore', 'isNormal']]) {
     assert.equal(await desktop.evaluate(({ BrowserWindow }, [event, action, check]) => new Promise(resolve => {
       const win = BrowserWindow.getAllWindows()[0];
@@ -205,6 +213,12 @@ try {
   desktop = await launch(httpsPort, httpPort);
   const reusedPage = await desktop.firstWindow();
   await reusedPage.waitForURL("**/platform*");
+  await reusedPage.waitForLoadState("load");
+  await desktop.evaluate(({ BrowserWindow }) => new Promise(resolve => {
+    const contents = BrowserWindow.getAllWindows()[0].webContents;
+    if (contents.isLoading()) contents.once('did-stop-loading', () => setImmediate(resolve));
+    else setImmediate(resolve);
+  }));
   await reusedPage.goto(`https://127.0.0.1:${httpsPort}/?mode=viewer`);
   await reusedPage.waitForFunction(async () => (await import("/desktop-bridge.js")).cameraDesktop?.isDesktop === true);
   await reusedPage.evaluate(() => { location.href = 'https://example.com/'; });

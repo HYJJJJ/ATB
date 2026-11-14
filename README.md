@@ -49,6 +49,7 @@ ATB 是一个以桌面 AI 助手为中心的 Windows 本机工具平台，将语
 ```powershell
 npm ci
 npm ci --prefix modules/assistant
+node node_modules/electron/install.js
 npm run setup:model
 npm start
 # 桌面模式

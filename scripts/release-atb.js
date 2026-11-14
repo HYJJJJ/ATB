@@ -9,31 +9,38 @@ import { pathToFileURL } from 'node:url';
 import { root, releaseDirectory, runtimePackage, sha256, fileList, assertRuntimePath, sourceMetadata } from './package-atb.js';
 
 const require = createRequire(import.meta.url);
-const privatePath = /(?:^|\/)(?:data|certs|private|desktop-profile|voice-runtime|\.venv|venv|test-results|node_modules|exports|\.git)(?:\/|$)|(?:^|\/)release[^/]*\/|(?:^|\/)\.env(?:\.|$)|\.(?:log|pem|key|crt|cer|pfx|p12|dpapi|sqlite|db|onnx|exe|zip)$/i;
+const privatePath = /(?:^|\/)(?:data|certs|private|desktop-profile|voice-runtime|tts-runtime|qwen-tts-runtime|\.venv|venv|test-results|node_modules|exports|\.git)(?:\/|$)|(?:^|\/)release[^/]*\/|(?:^|\/)\.env(?:\.|$)|\.(?:log|pem|key|crt|cer|pfx|p12|dpapi|sqlite|db|onnx|exe|zip)$/i;
 export function assertPublicSourcePath(filename) {
   if (filename.includes('\\') || filename.startsWith('/') || filename.split('/').some(part => part === '..') || privatePath.test(filename)) throw Error(`Private or unsafe source path rejected: ${filename}`);
   const allowed = /^(?:package(?:-lock)?\.json|README\.md|LICENSE|\.gitignore|\.gitattributes|Start-ATB(?:-Desktop)?\.cmd)$/i.test(filename)
     || /^\.github\/workflows\/release\.yml$/.test(filename)
     || /^docs\/(?:MODULES|RELEASING|RELEASE|DEPLOYMENT|SECURITY|THIRD-PARTY)\.md$/.test(filename)
     || /^deploy\/[a-zA-Z0-9_.\/-]+$/.test(filename)
-    || /^desktop\/(?:main|preload|module-host|service|trust|electron-builder)\.cjs$|^desktop\/connect\.(?:js|css|html)$/.test(filename)
+    || /^desktop\/(?:main|preload|module-host|service|trust|ui-source|tray|electron-builder)\.cjs$|^desktop\/connect\.(?:js|css|html)$|^desktop\/tray\.png$/.test(filename)
     || /^(?:server\/[^/]+\.js|public\/[^/]+\.(?:js|css|html|svg)|test\/[^/]+\.test\.js)$/.test(filename)
-    || /^scripts\/(?:package-atb|release-atb|check|test-all|test-packaged-atb|network|setup-cert)\.js$/.test(filename)
-    || /^modules\/(?:assistant|freecamera|rustdesk)\/(?:module\.json|package\.json|README\.md)$/.test(filename)
+    || /^scripts\/(?:package-atb|release-atb|check|test-all|test-packaged-atb|test-local-desktop-ui|network|setup-cert)\.js$/.test(filename)
+    || /^modules\/(?:assistant|freecamera|rustdesk)\/(?:module\.json|package(?:-lock)?\.json|README\.md)$/.test(filename)
+    || /^modules\/freecamera\/(?:RECORDING-ARCHIVE\.md|archive\/(?:baidu|receiver|store|verify|worker)\.js|archive\/package\.json)$/.test(filename)
+    || /^modules\/assistant\/docs\/licenses\/(?:node|pinyin-pro)\/(?:LICENSE(?:\.txt)?|provenance\.json)$/.test(filename)
+    || /^modules\/assistant\/public\/vision\/(?:LICENSE|(?:tiny_face_detector_model|face_landmark_68_model)-shard1|face_recognition_model-shard[12])$/.test(filename)
     || /^modules\/(?:assistant|freecamera|rustdesk)\/(?:server|desktop|public|test|scripts|assistant|deploy)\/[a-zA-Z0-9_.\/-]+\.(?:[cm]?js|html|css|svg|py|sh|service|timer|json|md|txt|ps1)$/.test(filename)
     || /^modules\/(?:assistant|freecamera|rustdesk)\/docs\/(?:[a-zA-Z0-9_.-]+\.md|licenses\/[a-zA-Z0-9_.-]+\.txt)$/.test(filename)
     || /^modules\/freecamera\/models\/(?:metadata\.json|README\.md|LICENSE(?:\.txt)?)$/.test(filename);
-  if (!allowed) throw Error(`Source file is not explicitly public: ${filename}`);
+  if (!allowed && filename !== 'modules/assistant/assistant/chattts-speakers.f32') throw Error(`Source file is not explicitly public: ${filename}`);
 }
 export function assertPublicText(content, filename) {
   if (/-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----|(?:ssh-ed25519|ssh-rsa) [A-Za-z0-9+/]{80,}|(?:sk-[a-zA-Z0-9]{24,})/.test(content)) throw Error(`Credential material rejected: ${filename}`);
   // Documentation examples must use placeholders, loopback, private LAN, or RFC 5737 addresses.
   for (const match of content.matchAll(/(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])/g)) {
     const ip = match[0], parts = ip.split('.').map(Number);
+    // The official Node license quotes a four-part zlib version, not a host.
+    if (filename === 'modules/assistant/docs/licenses/node/LICENSE.txt' && ip === [1, 3, 2, 1].join('.')
+      && content.includes(`version ${ip}, February`)) continue;
     // These routable addresses exercise the SSRF classifier; they are fixtures,
     // never configured production servers. Reserved ranges cannot test that branch.
     const classifierFixtures = [[8, 8, 8, 8], [1, 1, 1, 1], [93, 184, 216, 34]].map(parts => parts.join('.'));
-    if (filename === 'modules/assistant/test/model-request.test.js' && classifierFixtures.includes(ip)) continue;
+    if (filename === 'modules/assistant/test/model-request.test.js' && classifierFixtures.includes(ip)
+      || filename === 'modules/assistant/test/public-information-request.test.js' && ip === classifierFixtures[0]) continue;
     if (parts.some(n => n > 255)) continue;
     if (parts[0] >= 224 || /^(?:127\.|10\.|192\.168\.|169\.254\.|192\.0\.[02]\.|198\.51\.100\.|203\.0\.113\.)/.test(ip) || parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31 || parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127 || parts[0] === 198 && [18, 19].includes(parts[1])) continue;
     // Version numbers like 0.6.0.1 are not network addresses.
@@ -54,13 +61,16 @@ function gitBlob(sourceCommit, filename) {
 function packagedSource(filename, variant) {
   if (/^(?:LICENSE|docs\/THIRD-PARTY\.md)$/.test(filename)
     || /^(?:server\/[^/]+\.js|public\/[^/]+\.(?:js|css|html|svg|png|jpg))$/.test(filename)
-    || /^desktop\/(?:(?:main|preload|module-host|service|trust)\.cjs|connect\.(?:js|css|html))$/.test(filename)
+    || /^desktop\/(?:(?:main|preload|module-host|service|trust|ui-source|tray)\.cjs|connect\.(?:js|css|html)|tray\.png)$/.test(filename)
     || /^scripts\/(?:network|setup-cert)\.js$/.test(filename)) return true;
   if (variant !== 'full') return false;
+  if(filename==='modules/assistant/desktop/windows-automation.ps1')return true;
+  if (/^modules\/assistant\/public\/vision\//.test(filename)
+    || /^modules\/assistant\/docs\/licenses\/(?:node|pinyin-pro)\/(?:LICENSE(?:\.txt)?|provenance\.json)$/.test(filename)) return true;
   return /^modules\/(?:assistant|freecamera|rustdesk)\/(?:module\.json|package\.json|README\.md)$/.test(filename)
     || /^modules\/(?:assistant|freecamera|rustdesk)\/(?:server|desktop|public|assistant)\/[^\s]+\.(?:[cm]?js|html|css|svg|png|jpg|py)$/.test(filename)
     || /^modules\/(?:assistant|freecamera|rustdesk)\/deploy\//.test(filename)
-    || /^modules\/assistant\/(?:scripts\/setup-assistant-voice\.py|docs\/THIRD-PARTY-VOICE\.md|docs\/licenses\/[^/]+\.txt)$/.test(filename)
+    || /^modules\/assistant\/(?:scripts\/(?:setup-(?:assistant-voice|local-tts)\.py|import-chattts-speakers\.py|download-local-tts\.js)|assistant\/(?:(?:local-tts-manifest|qwen-tts-capabilities)\.json|chattts-speakers\.(?:json|f32))|server\/volcengine-voices\.json|docs\/(?:THIRD-PARTY-VOICE|LOCAL-TTS-LICENSES)\.md|docs\/licenses\/[^/]+\.txt)$/.test(filename)
     || /^modules\/freecamera\/models\/(?:metadata\.json|README\.md|LICENSE(?:\.txt)?)$/.test(filename);
 }
 export async function verifyFirstPartyRuntime(appDir, { sourceCommit, variant, sourceFiles, readSource } = {}) {

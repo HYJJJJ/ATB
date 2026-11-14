@@ -66,19 +66,18 @@ try {
   assert.equal(await page.locator('#view-workspace').isVisible(), false, 'desktop must show account login before viewing');
   await loginViewer(page, { username: '中', password: '1' });
 
-  assert.equal(await page.evaluate(async () => navigator.windowControlsOverlay?.visible), true,
-    'native window controls must be integrated into the application title bar');
+  assert.equal(await page.locator('#atb-window-controls button').count(), 3,
+    'shared window controls must be integrated into the application title bar');
   const titleBar = await page.locator('header').evaluate(header => {
-    const rect = header.getBoundingClientRect();
-    const available = navigator.windowControlsOverlay.getTitlebarAreaRect();
+    const rect = header.getBoundingClientRect(), controls = document.querySelector('#atb-window-controls').getBoundingClientRect();
     return { top: rect.top, height: rect.height, drag: getComputedStyle(header).getPropertyValue('app-region'),
       brandDrag: getComputedStyle(header.querySelector('.brand')).getPropertyValue('app-region'),
-      contentRight: header.querySelector('.local-tag').getBoundingClientRect().right,
-      controlsLeft: available.x + available.width, windowWidth: innerWidth };
+      contentRight: header.querySelector('.atb-module-return').getBoundingClientRect().right,
+      controlsLeft: controls.left, topGap: controls.top, bottomGap: rect.bottom - controls.bottom, rightGap: innerWidth - controls.right, windowWidth: innerWidth };
   });
   assert.equal(titleBar.top, 0); assert.equal(titleBar.height, 56);
   assert.equal(titleBar.drag, 'drag'); assert.equal(titleBar.brandDrag, 'no-drag');
-  assert.ok(titleBar.controlsLeft < titleBar.windowWidth, 'native caption buttons must have reserved space');
+  assert.equal(titleBar.topGap, 12); assert.equal(titleBar.bottomGap, 12); assert.equal(titleBar.rightGap, 12);
   assert.ok(titleBar.contentRight <= titleBar.controlsLeft, 'header content must not overlap caption buttons');
   await page.screenshot({ path: path.join(output, 'titlebar.png') });
   const nativeTitlebar = await desktop.evaluate(async ({ BrowserWindow, desktopCapturer }) => {

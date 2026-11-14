@@ -50,6 +50,8 @@ Context：
 
 核心 preload 暴露 `window.atbDesktop`：isDesktop、invokeModule(id,action,options)、hasModule(id)、通用连接设置方法、notify(options)。模块使用自己的浏览器适配文件对接，不在核心塞模块专属方法。`suspend(owner)` 在页面离开、连接设置、崩溃时释放模型/麦克风；`close()` 在退出时释放全部。监控页面通过 `window.atbPrepareClose` 完成录像尾部写入。
 
+桌面上下文另提供 `services()`，返回当前本机 `local` 与所选监控 `camera` 服务；后台模块应按用途选择服务，不能把助手数据切到远程。`registerBackground(webContents)` 注册可信隐藏内容并返回注销函数；媒体授权还需通过宿主限定的本机路径校验，不是任意隐藏页面的通用授权。模块必须为后台窗口使用独立 owner、限定 preload/IPC 来源，并在关闭时注销与释放。助手到场识别按此契约独立于前台页面运行。
+
 ## 迁移和部署
 
 桌面品牌可改为 ATB，但既有 FreeCamera userData/profile 路径保持稳定；支持 ATB_DATA_DIR 及 FREECAMERA_DATA_DIR 兼容。连接发现同时接受 app='atb'/'freecamera'。

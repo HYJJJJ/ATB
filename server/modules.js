@@ -2,7 +2,7 @@ import { readdir, readFile, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const reserved = new Set(['/', '/platform', '/platform.js', '/platform.css', '/api/config', '/ca.crt', '/api/platform/modules', '/api/platform/settings']);
+const reserved = new Set(['/', '/platform', '/platform.js', '/platform.css', '/ai-presets.js', '/api/config', '/ca.crt', '/api/platform/modules', '/api/platform/settings']);
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json; charset=utf-8' };
 const inside = (base, target) => { const relative = path.relative(base, target); return relative && !relative.startsWith('..') && !path.isAbsolute(relative); };
 async function localFile(directory, relative, publicOnly = false) {

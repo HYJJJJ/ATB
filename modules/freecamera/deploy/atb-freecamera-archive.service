@@ -1,0 +1,31 @@
+[Unit]
+Description=ATB FreeCamera hourly recording and Baidu archive
+After=network-online.target freecamera.service
+Wants=network-online.target
+ConditionPathExists=/opt/freecamera/current/modules/freecamera/archive/worker.js
+
+[Service]
+Type=simple
+User=freecamera
+Group=freecamera
+WorkingDirectory=/opt/freecamera/current
+ExecStart=/opt/freecamera/node/bin/node /opt/freecamera/current/modules/freecamera/archive/worker.js /etc/atb-modules/freecamera-archive.json
+Environment=PLAYWRIGHT_BROWSERS_PATH=/opt/freecamera/archive-browsers
+Environment=HOME=/var/lib/freecamera/archive-home
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=60
+KillMode=control-group
+UMask=0077
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/freecamera /var/lib/atb/secrets
+MemoryMax=900M
+CPUQuota=120%
+TasksMax=256
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

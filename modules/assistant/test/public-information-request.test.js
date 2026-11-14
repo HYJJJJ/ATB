@@ -1,0 +1,10 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {EventEmitter} from 'node:events';import {Readable} from 'node:stream';import {publicInformationRequest} from '../server/public-information-request.js';
+test('public transport pins validated DNS, allows queries and discards credentials and redirects',async()=>{
+ let options,looked;const lookup=async()=>[{address:'8.8.8.8',family:4}];const transport=(url,opts,done)=>{assert.match(url.search,/city/);options=opts;opts.lookup('example.com',{all:true},(_error,value)=>{looked=value;});const req=new EventEmitter();req.destroy=()=>{};req.end=()=>{const res=Readable.from([Buffer.from('{"ok":true}')]);res.statusCode=302;res.headers={'content-type':'application/json',location:'https://127.0.0.1/a'};done(res);};return req;};
+ const res=await publicInformationRequest('https://example.com/data?city=Shanghai',{headers:{Authorization:'secret',Cookie:'private'}},{lookup,transport});assert.equal(res.ok,false);assert.equal(options.headers.Authorization,undefined);assert.equal(options.headers.Cookie,undefined);assert.deepEqual(looked,[{address:'8.8.8.8',family:4}]);assert.deepEqual(await res.json(),{ok:true});
+});
+test('public transport rejects mixed private DNS, literals, credentials and aborted DNS',async()=>{
+ let calls=0;const transport=()=>{calls++;};for(const address of ['127.0.0.1','169.254.169.254','192.168.1.1','10.0.0.1','100.64.0.1','::1'])await assert.rejects(publicInformationRequest('https://example.com/a',{}, {lookup:async()=>[{address:'8.8.8.8'},{address}],transport}));
+ for(const url of ['https://127.0.0.1/a','https://u:p@example.com/a','http://example.com/a','https://example.com:8443/a'])await assert.rejects(publicInformationRequest(url,{}, {transport}));assert.equal(calls,0);
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15);try{await assert.rejects(publicInformationRequest('https://example.com/a',{signal:controller.signal},{lookup:()=>new Promise(()=>{}),transport}));}finally{clearTimeout(timer);}
+});

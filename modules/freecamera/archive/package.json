@@ -1,0 +1,7 @@
+{
+  "name": "atb-freecamera-archive",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": { "playwright-core": "1.65.0", "ws": "8.18.3" }
+}

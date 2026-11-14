@@ -5,18 +5,19 @@ import { PersonEvents } from './person-events.js';
 import { sessionToken } from '../../../server/accounts.js';
 import { RemoteDetector } from './remote-detector.js';
 import { DetectionPreference } from './detection-preference.js';
+import { loadRecorderToken, recorderAuthorized } from './recorder-auth.js';
 
 export function attachSignaling(server, { store = new DeviceStore(), detector = null, accounts = null, detectionInterval = 500,
   sourceTimeout = 2500, sourceCheckInterval = 500, relay = null, iceServers = [], requireCameraLogin = false,
   registrationTimeout = 10000, maxPending = 16, maxPendingPerIp = 4, detectionPreference = new DetectionPreference(),
-  onDiagnostic = event => console.log('[connection]', JSON.stringify(event)) } = {}) {
+  recorderToken = loadRecorderToken(), onDiagnostic = event => console.log('[connection]', JSON.stringify(event)) } = {}) {
   detector ??= new RemoteDetector();
   const wss = new WebSocketServer({ noServer: true, maxPayload: 512 * 1024 });
   const rooms = new Map(), codes = new Map(), attempts = new Map();
   let epoch = 0, closing = false, inferenceBusy = false;
   const send = (ws, data) => { if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data)); };
   const fail = (ws, code, extra = {}) => send(ws, { type: 'error', code, ...extra });
-  function authorized(ws) { return !accounts || accounts.session(ws.sessionToken)?.user.role === 'admin'; }
+  function authorized(ws) { return ws.recorder || !accounts || accounts.session(ws.sessionToken)?.user.role === 'admin'; }
   function requireLogin(ws) { if (authorized(ws)) return true; fail(ws, 'login-required'); return false; }
   function directory() { return store.list().map(device => ({ ...device, online: !!rooms.get(device.deviceId)?.camera, viewers: rooms.get(device.deviceId)?.viewers.size || 0 })).sort((a, b) => Number(b.online) - Number(a.online) || b.lastSeen - a.lastSeen || a.deviceId.localeCompare(b.deviceId)); }
   function catalogChanged() { for (const ws of wss.clients) if (ws.role === 'catalog' && authorized(ws)) send(ws, { type: 'devices', devices: directory() }); }
@@ -27,10 +28,11 @@ export function attachSignaling(server, { store = new DeviceStore(), detector = 
   }
   accounts?.on('revoked', revoked);
   const state = () => ({ available: true, location: 'local', ...detector.state, enabled: detectionPreference.enabled });
+  const detectionViewers = room => [...room.viewers.entries()].filter(([, ws]) => ws.detectionFrames !== false && authorized(ws));
   function reconcileDetection(retry = false) {
     if (closing) return;
     const current = state();
-    const wanted = current.enabled && current.available && [...rooms.values()].some(room => room.camera && [...room.viewers.values()].some(authorized));
+    const wanted = current.enabled && current.available && [...rooms.values()].some(room => room.camera && detectionViewers(room).length);
     let task;
     if (wanted && (current.status === 'off' || retry && current.status === 'error')) task = detector.enable();
     else if (!wanted && !['off', 'stopping'].includes(current.status)) task = detector.disable();
@@ -71,7 +73,8 @@ export function attachSignaling(server, { store = new DeviceStore(), detector = 
   }
   function detectionState() {
     for (const room of rooms.values()) {
-      if (!room.viewers.has(room.sourceId)) { room.sourceId = room.viewers.keys().next().value; room.sourceSince = Date.now(); }
+      const eligible = detectionViewers(room);
+      if (!eligible.some(([id]) => id === room.sourceId)) { room.sourceId = eligible[0]?.[0]; room.sourceSince = Date.now(); }
       for (const [id, ws] of room.viewers) send(ws, { type: 'detection-state', ...state(), cameraOnline: !!room.camera, source: id === room.sourceId && !!room.camera });
     }
   }
@@ -100,7 +103,7 @@ export function attachSignaling(server, { store = new DeviceStore(), detector = 
     let allowed = false;
     try { const origin = new URL(req.headers.origin); allowed = origin.host === req.headers.host && origin.protocol === (req.socket.encrypted ? 'https:' : 'http:'); } catch {}
     const pending = requireCameraLogin ? [...wss.clients].filter(ws => !ws.role && !accounts?.session(ws.sessionToken)) : [];
-    const administrator = accounts?.session(sessionToken(req))?.user.role === 'admin';
+    const administrator = accounts?.session(sessionToken(req))?.user.role === 'admin' || recorderAuthorized(req, recorderToken);
     const limited = requireCameraLogin && !administrator && (pending.length >= maxPending || pending.filter(ws => ws.sourceAddress === req.socket.remoteAddress).length >= maxPendingPerIp);
     if (!allowed || limited || req.url !== '/signal' || wss.clients.size >= 128) { socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); return; }
     wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
@@ -108,6 +111,7 @@ export function attachSignaling(server, { store = new DeviceStore(), detector = 
   server.on('upgrade', upgrade);
   wss.on('connection', (ws, req) => {
     ws.sourceAddress = req.socket.remoteAddress;
+    ws.recorder = recorderAuthorized(req, recorderToken);
     const registration = requireCameraLogin ? setTimeout(() => { if (!ws.role) ws.terminate(); }, registrationTimeout) : null;
     registration?.unref();
     ws.once('close', () => clearTimeout(registration));
@@ -121,6 +125,7 @@ export function attachSignaling(server, { store = new DeviceStore(), detector = 
       if (++traffic.count > 250) { ws.close(1008, 'Too many messages'); return; }
       let m; try { m = JSON.parse(raw); } catch { fail(ws, 'invalid-message'); return; }
       if (binary || !m || typeof m !== 'object') { fail(ws, 'invalid-message'); return; }
+      if (ws.recorder && !['catalog', 'watch', 'answer', 'candidate', 'restart', 'ping'].includes(m.type)) { fail(ws, 'recorder-read-only'); return; }
       // Frames are deliberately outside the serialized control queue: never build an inference backlog.
       if (m.type === 'detection-frame') { void detectFrame(ws, m).catch(e => fail(ws, 'detection-failed')); return; }
       if (m.type === 'detection-toggle') { void toggleDetection(ws, m); return; }
@@ -165,6 +170,7 @@ export function attachSignaling(server, { store = new DeviceStore(), detector = 
         }
         if (m.type === 'join' || m.type === 'watch') {
           if (ws.role) { fail(ws, 'already-joined'); return; }
+          ws.detectionFrames = !ws.recorder && m.detectionFrames !== false;
           const ip = req.socket.remoteAddress; let entry = attempts.get(ip);
           if (!entry || Date.now() - entry.time > 60000) { entry = { time: Date.now(), count: 0 }; attempts.set(ip, entry); }
           if (entry.count >= 10) { fail(ws, 'rate-limited'); return; }
@@ -174,11 +180,11 @@ export function attachSignaling(server, { store = new DeviceStore(), detector = 
             if (!room) { entry.count++; fail(ws, /^\d{8}$/.test(m.code ?? '') ? 'not-found' : 'invalid-code'); return; }
             token = await store.viewerToken(room.deviceId);
           } else {
-            if (accounts ? !store.devices.has(m.deviceId) : !store.authorizeViewer(m.deviceId, m.viewerToken)) { entry.count++; fail(ws, 'unauthorized'); return; }
+            if (accounts || ws.recorder ? !store.devices.has(m.deviceId) : !store.authorizeViewer(m.deviceId, m.viewerToken)) { entry.count++; fail(ws, 'unauthorized'); return; }
             room = roomFor(m.deviceId); token = m.viewerToken;
           }
           if (ws.readyState !== WebSocket.OPEN || closing || !requireLogin(ws)) return;
-          if (room.viewers.size >= 4) { fail(ws, 'room-full'); return; }
+          if (ws.recorder ? [...room.viewers.values()].some(viewer => viewer.recorder) : [...room.viewers.values()].filter(viewer => !viewer.recorder).length >= 4) { fail(ws, 'room-full'); return; }
           ws.viewerToken = token; attached(ws, room, token); return;
         }
         const room = ws.room; if (!room) { fail(ws, 'not-joined'); return; }
@@ -254,8 +260,9 @@ export function attachSignaling(server, { store = new DeviceStore(), detector = 
   const sourceLease = setInterval(() => {
     if (state().status !== 'on') return;
     for (const room of rooms.values()) {
-      if (!room.camera || room.viewers.size < 2 || Date.now() - Math.max(room.lastFrame, room.sourceSince || 0) < sourceTimeout) continue;
-      const ids = [...room.viewers.keys()]; room.sourceId = ids[(ids.indexOf(room.sourceId) + 1) % ids.length]; room.sourceSince = Date.now();
+      const ids = detectionViewers(room).map(([id]) => id);
+      if (!room.camera || ids.length < 2 || Date.now() - Math.max(room.lastFrame, room.sourceSince || 0) < sourceTimeout) continue;
+      room.sourceId = ids[(ids.indexOf(room.sourceId) + 1) % ids.length]; room.sourceSince = Date.now();
       detectionState();
     }
   }, sourceCheckInterval); sourceLease.unref();

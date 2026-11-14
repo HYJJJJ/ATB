@@ -70,6 +70,12 @@ try {
   for (const page of [camera, viewer]) page.on('pageerror', error => errors.push(error.message));
   await camera.addInitScript(() => {
     window.testMicrophones = [];
+    window.testAudioSessionTypes = [];
+    let audioSessionType = 'auto';
+    Object.defineProperty(navigator, 'audioSession', { configurable: true, value: {
+      get type() { return audioSessionType; },
+      set type(value) { audioSessionType = value; window.testAudioSessionTypes.push(value); }
+    } });
     const capture = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
     navigator.mediaDevices.getUserMedia = async constraints => {
       const stream = await capture(constraints); window.testMicrophones.push(...stream.getAudioTracks()); return stream;
@@ -98,6 +104,7 @@ try {
   await viewer.locator('#record').click(); await viewer.waitForTimeout(700);
   const peersBefore = await viewer.evaluate(() => window.testPeers.length);
   await camera.locator('#microphone-toggle').uncheck();
+  assert.equal(await camera.evaluate(() => navigator.audioSession.type), 'auto', 'microphone off must release the capture session preference');
   await viewer.waitForFunction(() => document.querySelector('#audio-status').textContent.includes('麦克风已关闭'));
   assert.equal(await camera.evaluate(() => window.testMicrophones.every(track => track.readyState === 'ended')), true, 'switching microphone off must release capture tracks');
   assert.equal(await viewer.locator('#record').textContent(), '停止录像', 'microphone toggles must preserve recording');
@@ -119,7 +126,37 @@ try {
   assert.equal(await camera.evaluate(() => window.testMicrophones.at(-1).readyState), 'live', 'stopping a recording must not stop the camera microphone');
   const lateAudio = await saveRecording(second, path.resolve(`test-results/audio/${mode}-late-sound.webm`));
   assert.ok(lateAudio.peak > .01, 'recording started before microphone enable must capture sound when it returns');
+  assert.equal(await camera.evaluate(() => navigator.audioSession.type), 'play-and-record', 'duplex iOS session must be requested before microphone capture');
+  const microphoneCount = await camera.evaluate(() => window.testMicrophones.length);
+  await camera.evaluate(() => {
+    const track = window.testMicrophones.at(-1);
+    window.testInterruptedMicrophone = track;
+    Object.defineProperty(track, 'muted', { configurable: true, get: () => true });
+    track.dispatchEvent(new Event('mute'));
+  });
+  await camera.waitForFunction(previous => window.testMicrophones.length > previous && window.testMicrophones.at(-1).readyState === 'live', microphoneCount, { timeout: 8000 });
+  await camera.waitForFunction(() => window.testInterruptedMicrophone.readyState === 'ended');
+  assert.equal(await viewer.evaluate(() => window.testPeers.length), peersBefore, 'interrupted microphone recovery must preserve the video peer');
+  const recoveredEnergy = await viewer.evaluate(() => window.testAudioEnergy());
+  await viewer.waitForFunction(async previous => await window.testAudioEnergy() > previous + .005, recoveredEnergy);
+  assert.equal(await camera.locator('video').evaluate(video => video.srcObject.getAudioTracks().length), 1, 'recovery must replace rather than accumulate input tracks');
+  const recoveredCount = await camera.evaluate(() => window.testMicrophones.length);
+  await camera.evaluate(() => {
+    const track = window.testMicrophones.at(-1); let muted = true;
+    Object.defineProperty(track, 'muted', { configurable: true, get: () => muted });
+    track.dispatchEvent(new Event('mute')); muted = false; track.dispatchEvent(new Event('unmute'));
+    track.enabled = false;
+  });
+  await camera.waitForTimeout(1700);
+  assert.equal(await camera.evaluate(() => window.testMicrophones.length), recoveredCount, 'brief interruption and ordinary silence must not repeatedly reacquire microphone');
+  await camera.evaluate(() => {
+    const track = window.testMicrophones.at(-1); track.enabled = true;
+    Object.defineProperty(track, 'muted', { configurable: true, get: () => true }); track.dispatchEvent(new Event('mute'));
+  });
   await camera.locator('#stop').click();
+  await camera.waitForTimeout(1700);
+  assert.equal(await camera.evaluate(() => window.testMicrophones.length), recoveredCount, 'stop must cancel pending recovery');
+  assert.equal(await camera.evaluate(() => navigator.audioSession.type), 'auto', 'stopping must restore the session preference');
   assert.equal(await camera.evaluate(() => window.testMicrophones.every(track => track.readyState === 'ended')), true);
   const deniedContext = await browser.newContext({ ignoreHTTPSErrors: true, permissions: ['camera'] });
   const denied = await deniedContext.newPage(); denied.on('pageerror', error => errors.push(error.message));

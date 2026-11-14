@@ -1,4 +1,4 @@
-"""Install only local speech recognition and EdgeTTS into an isolated environment."""
+"""Install only local speech recognition into an isolated environment."""
 import argparse
 import hashlib
 import json
@@ -54,7 +54,7 @@ def main():
     python = runtime / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     if not python.exists():
         venv.EnvBuilder(with_pip=True).create(runtime)
-    subprocess.run([str(python), "-m", "pip", "install", "--disable-pip-version-check", "numpy==1.26.4", "sherpa-onnx==1.13.8", "edge-tts==7.3.1"], check=True)
+    subprocess.run([str(python), "-m", "pip", "install", "--disable-pip-version-check", "numpy==1.26.4", "sherpa-onnx==1.13.8"], check=True)
     models = root / "models" / "sensevoice-int8"
     models.mkdir(parents=True, exist_ok=True)
     download("model.int8.onnx", models, MODEL_SHA256)

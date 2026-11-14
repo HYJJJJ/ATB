@@ -1,20 +1,31 @@
 import { sessionToken } from './accounts.js';
 import { isIP } from 'node:net';
 import { AiError, aiPatch, visibleAi, probeAi } from './ai-settings.js';
+import { billingPatch, visibleBilling, createVolcengineBalanceReader } from './volcengine-billing.js';
 
 export function visibleServer(value = {}) {
   return { label: typeof value.label === 'string' ? value.label : '', publicHost: typeof value.publicHost === 'string' ? value.publicHost : '' };
 }
-export function createPlatformRoutes({ accounts, shared, modules, platform, request }) {
+export function createPlatformRoutes({ accounts, shared, modules, platform, request, billingRequest }) {
   const active = new Set();
+  const readVolcBalance = createVolcengineBalanceReader(billingRequest);
   return async (req, res, pathname) => {
     if (!pathname.startsWith('/api/platform/')) return false;
     const reply = (status, value) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(req.method === 'HEAD' ? undefined : JSON.stringify(value)); };
     if (!accounts.session(sessionToken(req))) { reply(401, { error: '请先登录 ATB' }); return true; }
     if (pathname === '/api/platform/modules' && ['GET', 'HEAD'].includes(req.method)) { reply(200, { platform, modules: modules.list(), errors: modules.errors }); return true; }
+    const isBilling = pathname === '/api/platform/billing/volcengine';
+    if (pathname === '/api/platform/billing/volcengine/balance' && ['GET', 'HEAD'].includes(req.method)) {
+      if (req.method === 'HEAD') { reply(200, {}); return true; }
+      const token = sessionToken(req), result = await readVolcBalance(shared.get('billing')?.volcengine, { force: new URL(req.url, 'https://localhost').searchParams.get('refresh') === '1' });
+      if (!accounts.session(token)) reply(401, { error: '登录已过期，请重新登录' });
+      else reply(200, result);
+      return true;
+    }
+    if (isBilling && ['GET', 'HEAD'].includes(req.method)) { reply(200, visibleBilling(shared.get('billing')?.volcengine)); return true; }
     const isAi = ['/api/platform/ai', '/api/platform/ai/models', '/api/platform/ai/test'].includes(pathname);
-    if (pathname !== '/api/platform/settings' && !isAi) { reply(404, { error: '接口不存在' }); return true; }
-    if (['GET', 'HEAD'].includes(req.method) && ['/api/platform/settings', '/api/platform/ai'].includes(pathname)) { reply(200, isAi ? visibleAi(shared.get('ai')) : { server: visibleServer(shared.get('server')) }); return true; }
+    if (pathname !== '/api/platform/settings' && !isAi && !isBilling) { reply(404, { error: '接口不存在' }); return true; }
+    if (['GET', 'HEAD'].includes(req.method) && ['/api/platform/settings', '/api/platform/ai'].includes(pathname)) { reply(200, isAi ? visibleAi(shared.get('ai')) : { server: visibleServer(shared.get('server')), billing: { volcengine: visibleBilling(shared.get('billing')?.volcengine) } }); return true; }
     if (req.method !== 'POST') { reply(405, { error: '请求方法无效' }); return true; }
     try {
       let validOrigin = false;
@@ -24,6 +35,10 @@ export function createPlatformRoutes({ accounts, shared, modules, platform, requ
       for await (const chunk of req) { bytes += chunk.length; if (bytes > 150000) { reply(413, { error: '配置内容过长' }); return true; } chunks.push(chunk); }
       const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
       if (!body || typeof body !== 'object' || Array.isArray(body)) throw new AiError('配置格式无效');
+      if (isBilling) {
+        const value = await shared.update('billing', old => ({ ...old, volcengine: billingPatch(body, old?.volcengine) }));
+        reply(200, visibleBilling(value.volcengine)); return true;
+      }
       if (isAi) {
         if (pathname === '/api/platform/ai') { const ai = await shared.update('ai', current => aiPatch(body, current)); reply(200, visibleAi(ai)); return true; }
         const token = sessionToken(req), key = `${token}:${pathname}`;

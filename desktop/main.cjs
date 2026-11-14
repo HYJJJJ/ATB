@@ -5,14 +5,19 @@ const { readFile } = require('node:fs/promises');
 const { mkdirSync } = require('node:fs');
 const { certificateMatches, isTrustedUrl } = require('./trust.cjs');
 const { loadDesktopModules } = require('./module-host.cjs');
-const { connectService, connectRemoteService, validateRoot, loadConnectionProfile, saveConnectionProfile } = require('./service.cjs');
+const { connectLocalService, connectRemoteService, validateRoot, loadConnectionProfile, saveConnectionProfile } = require('./service.cjs');
+const { createUiSource } = require('./ui-source.cjs');
+const { createDesktopTray } = require('./tray.cjs');
 
 const projectRoot = path.resolve(__dirname, '..');
 let nativeModules;
 const saving = new Set();
 const notificationTimes = new Map();
+const backgroundContents = new Set();
 let window;
+let tray;
 let service;
+let uiSource;
 let localService, dataRoot, profileFile, pendingCa = '', settingsError = '', pageMode = 'settings', connectionTask;
 let profile = { mode: 'local' };
 let profileWrites = Promise.resolve();
@@ -21,6 +26,7 @@ const settingsAssets = new Set(['connect.html', 'connect.js', 'connect.css'].map
 let quitting = false;
 let shutdownComplete = false;
 let settingsReturnUrl = '', lastNavigation = 0;
+let pendingNavigation = '', quitTask, unloadTask, allowedUnload = '', navigationGeneration = 0;
 
 // Keep the existing profile and data location across the ATB rename.
 app.setName('FreeCamera');
@@ -44,8 +50,8 @@ function port(value, fallback) {
 function trustedSender(event) {
   if (!window || window.isDestroyed() || event.sender !== window.webContents
       || event.senderFrame !== event.sender.mainFrame
-      || pageMode !== 'viewer' || !service || !isTrustedUrl(event.senderFrame.url, service.origin)
-      || !isTrustedUrl(event.sender.getURL(), service.origin)) throw new Error('Untrusted desktop request');
+      || pageMode !== 'viewer' || !uiSource?.trustedPage(event.senderFrame.url)
+      || !uiSource.trustedPage(event.sender.getURL())) throw new Error('Untrusted desktop request');
   return event.sender.id;
 }
 
@@ -57,8 +63,29 @@ function trustedSettings(event) {
   if (!window || window.isDestroyed() || event.sender !== window.webContents || event.senderFrame !== event.sender.mainFrame
       || pageMode !== 'settings' || event.senderFrame.url !== settingsUrl || event.sender.getURL() !== settingsUrl) throw Error('Untrusted connection settings request');
 }
+async function confirmViewerLeave() {
+  if (!window || window.isDestroyed() || pageMode !== 'viewer' || !uiSource?.trustedPage(window.webContents.getURL())) return true;
+  const contents = window.webContents, current = contents.getURL();
+  const dirty = await contents.executeJavaScript('Boolean(window.atbHasUnsavedChanges?.())');
+  if (!dirty) return true;
+  const approved = await contents.executeJavaScript('Promise.resolve(window.atbConfirmLeave?.() ?? false)');
+  return approved === true && window && !window.isDestroyed() && !contents.isDestroyed() && pageMode === 'viewer' && contents.getURL() === current;
+}
+async function confirmDesktopAction(details,context={}) {
+  context.signal?.throwIfAborted();context.check?.();
+  showMain();
+  if(!window||window.isDestroyed()||pageMode!=='viewer'||!uiSource?.trustedPage(window.webContents.getURL()))return false;
+  const contents=window.webContents,current=contents.getURL();
+  const requestId=require('node:crypto').randomUUID();let timer,cancel;
+  const approved=await Promise.race([
+    contents.executeJavaScript('Promise.resolve(window.atbConfirm?.('+JSON.stringify({...details,requestId})+') ?? false)').catch(()=>false),
+    new Promise(resolve=>{cancel=()=>{void contents.executeJavaScript('window.atbCancelConfirm?.('+JSON.stringify(requestId)+')').catch(()=>{});resolve(false);};context.signal?.addEventListener('abort',cancel,{once:true});timer=setTimeout(cancel,45000);if(context.signal?.aborted)cancel();}),
+  ]).finally(()=>{clearTimeout(timer);context.signal?.removeEventListener('abort',cancel);});
+  context.signal?.throwIfAborted();context.check?.();
+  return approved===true&&!quitting&&!contents.isDestroyed()&&contents.getURL()===current;
+}
 async function finishViewer() {
-  if (!window || window.isDestroyed() || pageMode !== 'viewer' || !service || !isTrustedUrl(window.webContents.getURL(), service.origin)) return;
+  if (!window || window.isDestroyed() || pageMode !== 'viewer' || !uiSource?.trustedPage(window.webContents.getURL())) return;
   let timer;
   try {
     await Promise.race([window.webContents.executeJavaScript('Promise.resolve(window.atbPrepareClose?.())'),
@@ -75,9 +102,10 @@ function updateProfile(next) {
   return profileWrites;
 }
 async function showSettings(message = '') {
+  if (!await confirmViewerLeave()) return;
   await finishViewer(); if (quitting) return;
   const current = window.webContents.getURL();
-  if (service && isTrustedUrl(current, service.origin)) settingsReturnUrl = current;
+  if (uiSource?.trustedPage(current)) settingsReturnUrl = current;
   await nativeModules?.suspend(window.webContents.id);
   settingsError = message; pageMode = 'settings'; await window.loadFile(settingsFile);
   window.webContents.navigationHistory.clear();
@@ -87,7 +115,7 @@ async function returnToViewer() {
   connectionTask = (async () => {
     pageMode = 'viewer';
     try {
-      await window.loadURL(settingsReturnUrl && isTrustedUrl(settingsReturnUrl, service.origin) ? settingsReturnUrl : `${service.origin}${service.platform ? '/platform' : '/?mode=viewer'}`);
+      await window.loadURL(settingsReturnUrl && uiSource.trustedPage(settingsReturnUrl) ? settingsReturnUrl : `${localService.origin}/platform`);
       window.webContents.navigationHistory.clear();
       return { ok: true };
     } catch (error) {
@@ -104,25 +132,25 @@ async function navigateService(direction) {
   if (!window || !service || connectionTask || quitting) return;
   const contents = window.webContents, history = contents.navigationHistory;
   const destination = history.getAllEntries()[history.getActiveIndex() + (direction === 'back' ? -1 : 1)];
-  if (destination && isTrustedUrl(contents.getURL(), service.origin) && isTrustedUrl(destination.url, service.origin)) {
+  if (destination && uiSource.trustedPage(contents.getURL()) && uiSource.trustedNavigation(destination.url)) {
     await finishViewer();
     if (direction === 'back') history.goBack(); else history.goForward();
   }
 }
 async function selectConnection(options, persist = true) {
   let next;
+  if (!localService) {
+    localService = await connectLocalService({ dataRoot, httpsPort: port(process.env.HTTPS_PORT, 8443), httpPort: port(process.env.HTTP_PORT, 8080) });
+  }
   if (options.mode === 'local') {
-    if (!localService) {
-      const { selectedIp } = await import(pathToFileURL(path.join(projectRoot, 'scripts/network.js')).href);
-      const { startServers } = await import(pathToFileURL(path.join(projectRoot, 'server/index.js')).href);
-      localService = await connectService({ dataRoot, lanIp: selectedIp(), httpsPort: port(process.env.HTTPS_PORT, 8443), httpPort: port(process.env.HTTP_PORT, 8080), startServers });
-    }
     next = localService;
     if (!pendingCa) pendingCa = next.ca;
   } else if (options.mode === 'remote') {
     const saved = options.savedOrigin && savedRemotes().find(item => item.origin === options.savedOrigin);
     if (options.savedOrigin && !saved) throw Error('未找到已保存的服务');
-    next = await connectRemoteService({ address: saved ? saved.origin : options.address, ca: saved ? saved.ca : pendingCa });
+    // Restoring a camera endpoint must not require it to be online just to open ATB.
+    next = !persist && saved ? { ...saved, remote: true, platform: true }
+      : await connectRemoteService({ address: saved ? saved.origin : options.address, ca: saved ? saved.ca : pendingCa });
   }
   else throw Error('请选择本机服务或远程服务');
   if (quitting) return;
@@ -134,7 +162,9 @@ async function selectConnection(options, persist = true) {
   if (persist) await updateProfile(nextProfile);
   if (persist && options.mode === 'remote') pendingCa = next.ca;
   profile = nextProfile; service = next; pageMode = 'viewer';
-  await window.loadURL(`${service.origin}${service.platform ? '/platform' : '/?mode=viewer'}`);
+  const module = nativeModules.remoteUi[0];
+  const destination = persist && module ? `${service.origin}${module.entry}` : `${localService.origin}/platform`;
+  await window.loadURL(destination);
   window.webContents.navigationHistory.clear();
 }
 function installConnectionBridge() {
@@ -189,7 +219,7 @@ function installConnectionBridge() {
 }
 
 async function chooseFile(owner, options) {
-  if (!window || window.isDestroyed() || window.webContents.id !== owner || pageMode !== 'viewer' || !service || !isTrustedUrl(window.webContents.getURL(), service.origin)) throw new Error('Untrusted desktop request');
+  if (!window || window.isDestroyed() || window.webContents.id !== owner || pageMode !== 'viewer' || !uiSource?.trustedPage(window.webContents.getURL())) throw new Error('Untrusted desktop request');
   if (saving.has(owner)) throw new Error('A save dialog is already open');
   saving.add(owner);
   try {
@@ -210,8 +240,36 @@ function notify(owner, { title, body } = {}) {
   return { supported: true };
 }
 function installNativeBridge() {
-  handle('atb:module', (owner, { id, action, options } = {}) => nativeModules.invoke(id, action, owner, options));
+  handle('atb:module', (owner, { id, action, options } = {}) => {
+    const remote = uiSource.remoteModule(window.webContents.getURL());
+    if (remote && remote.id !== id) throw Error('Untrusted desktop module request');
+    return nativeModules.invoke(id, action, owner, options);
+  });
+  handle('atb:runtime-info', () => ({ version: app.getVersion(), interfaceSource: 'local', preview: !app.isPackaged }));
   handle('atb:notify', notify);
+  ipcMain.handle('atb:window', (event, action) => {
+    if (pageMode === 'settings') trustedSettings(event);
+    else trustedSender(event);
+    if (!['state', 'minimize', 'maximize', 'close'].includes(action)) throw Error('Invalid window action');
+    if (action === 'minimize') window.minimize();
+    if (action === 'maximize') { if (window.isMaximized()) window.unmaximize(); else window.maximize(); }
+    if (action === 'close') window.close();
+    return { maximized: Boolean(window && !window.isDestroyed() && window.isMaximized()) };
+  });
+}
+
+function showMain() { if (!window || window.isDestroyed()) return; if (window.isMinimized()) window.restore(); window.show(); window.focus(); }
+async function navigateDesktop(page,context={}) {
+  const guard=()=>{context.signal?.throwIfAborted();context.check?.();};guard();
+  const routes = { main:'/platform', platform:'/platform#settings/general', assistant:'/modules/assistant/#assistant', persona:'/modules/assistant/#assistant', voice:'/modules/assistant/#voice', faces:'/modules/assistant/#faces', model:'/modules/assistant/#model',tools:'/modules/assistant/#tools' };
+  if (!routes[page] || !localService || !window || window.isDestroyed() || quitting || connectionTask) return false;
+  showMain(); if (!await confirmViewerLeave()) return false;
+  guard();
+  await finishViewer(); if (quitting) return false;
+  guard();
+  pageMode = 'viewer'; await window.loadURL(localService.origin + routes[page]);
+  if (page === 'persona') window.webContents.send('atb:companion-command',{action:'persona'});
+  return true;
 }
 
 async function openWindow() {
@@ -223,17 +281,22 @@ async function openWindow() {
   } catch (error) { settingsError = `连接配置无法读取：${error.message}`; }
   nativeModules = loadDesktopModules({
     modulesRoot: path.join(projectRoot, 'modules'),
-    context: { dataRoot, app, window: () => window, chooseFile, notify },
+    context: { dataRoot, app, window: () => window, chooseFile, notify, navigate:navigateDesktop, confirmDesktopAction, quit:() => app.quit(),
+      commandAssistant(command) { if (!window || window.isDestroyed() || pageMode !== 'viewer' || !window.webContents.getURL().startsWith(`${localService?.origin}/modules/assistant/`)) return false; window.webContents.send('atb:companion-command',command); return true; },
+      services: () => ({ local: localService, camera: service }), registerBackground(contents) { backgroundContents.add(contents); return () => backgroundContents.delete(contents); } },
     onError: ({ id, phase }) => console.error(`ATB desktop module ${id}: ${phase} failed`),
   });
+  uiSource = createUiSource({ local: () => localService, selected: () => service, modules: nativeModules.remoteUi });
   window = new BrowserWindow({
     title: 'ATB', width: 1240, height: 860, minWidth: 860, minHeight: 620,
-    titleBarStyle: 'hidden',
-    titleBarOverlay: { color: '#00000000', symbolColor: '#e7ebf2', height: 36 },
+    frame: false,
     backgroundColor: '#0d1017', show: false,
     webPreferences: { additionalArguments: [`--atb-modules=${encodeURIComponent(JSON.stringify(nativeModules.ids))}`], preload: path.join(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true, backgroundThrottling: false },
   });
   const webContents = window.webContents;
+  for (const event of ['maximize', 'unmaximize']) window.on(event, () => {
+    if (!webContents.isDestroyed()) webContents.send('atb:window-state', { maximized: window.isMaximized() });
+  });
   window.on('app-command', (event, command) => {
     if (!['browser-backward', 'browser-forward'].includes(command)) return;
     event.preventDefault();
@@ -246,36 +309,63 @@ async function openWindow() {
     event.preventDefault();
     if (input.type === 'keyDown') void navigateService(back ? 'back' : 'forward');
   });
-  webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => { if (mainFrame && !inPlace) { void nativeModules.suspend(webContents.id); } });
+  webContents.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => { if (mainFrame && !inPlace) { pendingNavigation = _url; navigationGeneration++; void nativeModules.suspend(webContents.id); } });
   webContents.on('render-process-gone', () => { void nativeModules.suspend(webContents.id); });
   webContents.session.setCertificateVerifyProc((request, callback) => {
-    const hostname = service && new URL(service.origin).hostname;
-    callback(pageMode === 'viewer' && request.hostname === hostname && certificateMatches(request.certificate.data, service.ca, hostname) ? 0 : -2);
+    const trusted = [localService, service].some(target => target && request.hostname === new URL(target.origin).hostname
+      && certificateMatches(request.certificate.data, target.ca, request.hostname));
+    callback(trusted ? 0 : -2);
   });
   app.on('certificate-error', (event, contents, url, _error, certificate, callback) => {
-    const trusted = pageMode === 'viewer' && service && contents === webContents && isTrustedUrl(url, service.origin)
-      && certificateMatches(certificate.data, service.ca, new URL(service.origin).hostname);
+    const trusted = (pageMode === 'viewer' && contents === webContents || backgroundContents.has(contents)) && [localService, service].some(target => target && isTrustedUrl(url, target.origin)
+      && certificateMatches(certificate.data, target.ca, new URL(target.origin).hostname));
     if (trusted) event.preventDefault();
     callback(trusted);
   });
   webContents.session.setPermissionRequestHandler((contents, permission, callback, details) => {
     const allowed = permission === 'fullscreen' || (permission === 'media' && details.mediaTypes?.length > 0 && details.mediaTypes.every(type => type === 'audio'));
-    callback(Boolean(pageMode === 'viewer' && service && contents === webContents && details.isMainFrame !== false && allowed && isTrustedUrl(details.requestingUrl || contents.getURL(), service.origin)));
+    const background = backgroundContents.has(contents) && ['presence-background.html','companion.html'].some(page => contents.getURL() === `${localService?.origin}/modules/assistant/${page}`);
+    callback(Boolean((background || pageMode === 'viewer' && contents === webContents) && details.isMainFrame !== false && allowed && uiSource.trustedPage(details.requestingUrl || contents.getURL())));
   });
   webContents.session.setPermissionCheckHandler((contents, permission, requestingOrigin, details) =>
-    Boolean(pageMode === 'viewer' && service && contents === webContents && (permission === 'fullscreen' || (permission === 'media' && details.mediaType === 'audio')) && isTrustedUrl(requestingOrigin, service.origin)));
+    Boolean((backgroundContents.has(contents) && ['presence-background.html','companion.html'].some(page => contents.getURL() === `${localService?.origin}/modules/assistant/${page}`) || pageMode === 'viewer' && contents === webContents) && (permission === 'fullscreen' || (permission === 'media' && details.mediaType === 'audio')) && uiSource.trustedRequest(requestingOrigin)));
+  webContents.session.protocol.handle('https', request => {
+    const route = uiSource.route(request.url);
+    if (route?.redirect) return Response.redirect(route.redirect, 307);
+    if (route?.asset) return webContents.session.fetch(route.asset, { bypassCustomProtocolHandlers: true, method: request.method });
+    const headers = new Headers(request.headers);
+    // Electron's privileged fetch has no renderer origin. Restore the validated
+    // same-origin context so account/API CSRF checks remain enforced.
+    if (!['GET', 'HEAD'].includes(request.method) && !headers.has('Origin')) headers.set('Origin', new URL(request.url).origin);
+    return webContents.session.fetch(request, { bypassCustomProtocolHandlers: true, credentials: 'include', headers });
+  });
   webContents.session.webRequest.onBeforeRequest((details, callback) => {
     let allowed = pageMode === 'settings' && settingsAssets.has(details.url);
+    // Some requests have no webContentsId; never pass it to Electron.fromId.
+    if([...backgroundContents].some(contents => !contents.isDestroyed() && contents.id === details.webContentsId))allowed=uiSource.trustedRequest(details.url);
     if (pageMode === 'viewer' && service) {
-      allowed = isTrustedUrl(details.url, service.origin);
-      if (details.url.startsWith('wss:')) allowed = isTrustedUrl(details.url.replace(/^wss:/, 'https:'), service.origin);
-      if (details.url.startsWith('blob:')) allowed = isTrustedUrl(details.url.slice(5), service.origin);
+      allowed = uiSource.trustedRequest(details.url);
     }
     if (details.url.startsWith('devtools:')) allowed = !app.isPackaged;
     callback({ cancel: !allowed });
   });
   for (const eventName of ['will-navigate', 'will-redirect']) webContents.on(eventName, (event, url) => {
-    if (pageMode !== 'viewer' || !service || !isTrustedUrl(url, service.origin)) event.preventDefault();
+    if (pageMode !== 'viewer' || !uiSource.trustedNavigation(url)) event.preventDefault();
+    else { pendingNavigation = url; }
+  });
+  webContents.on('will-prevent-unload', event => {
+    if (shutdownComplete) { event.preventDefault(); return; }
+    const current = webContents.getURL();
+    if (pageMode !== 'viewer' || !uiSource?.trustedPage(current)) return;
+    if (allowedUnload === current) { allowedUnload = ''; event.preventDefault(); return; }
+    if (unloadTask || quitting || !uiSource.trustedNavigation(pendingNavigation)) return;
+    const destination = pendingNavigation, generation = navigationGeneration;
+    unloadTask = webContents.executeJavaScript('Promise.resolve(window.atbConfirmLeave?.() ?? false)').then(async approved => {
+      if (approved !== true || quitting || !window || window.isDestroyed() || webContents.isDestroyed()
+          || pageMode !== 'viewer' || webContents.getURL() !== current || generation !== navigationGeneration) return;
+      allowedUnload = current;
+      try { await window.loadURL(destination); } finally { allowedUnload = ''; }
+    }).catch(error => console.error('确认离开页面失败:', error.message)).finally(() => { unloadTask = null; });
   });
   webContents.on('will-attach-webview', event => event.preventDefault());
   webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -287,6 +377,7 @@ async function openWindow() {
   window.once('ready-to-show', () => window?.show());
   window.on('close', event => {
     if (shutdownComplete) return;
+    if (tray?.hideOnClose(event, () => window.hide())) return;
     event.preventDefault();
     app.quit();
   });
@@ -294,24 +385,35 @@ async function openWindow() {
   Menu.setApplicationMenu(null);
   installNativeBridge();
   installConnectionBridge();
+  tray = createDesktopTray({electron:require('electron'),show:showMain,quit:() => app.quit(),open:page => { void navigateDesktop(page).catch(error => console.error('打开快捷入口失败:',error.message)); },
+    companion:() => { if(nativeModules.hasModule?.('assistant')) void nativeModules.invoke('assistant','companion',window.webContents.id,{action:'toggle'}).catch(error => console.error('切换桌面助手失败:',error.message)); }});
   if (settingsError) await showSettings(settingsError);
   else {
     connectionTask = selectConnection({ mode: profile.mode, address: profile.origin, savedOrigin: profile.mode === 'remote' ? profile.origin : undefined }, false);
     try { await connectionTask; } catch (error) { await showSettings(error.message); }
     finally { connectionTask = null; }
   }
+  if (localService && nativeModules.hasModule?.('assistant')) await nativeModules.invoke('assistant','companion',window.webContents.id,{action:'start'}).catch(error => console.error('桌面助手启动失败:',error.message));
 }
 
-app.on('window-all-closed', () => app.quit());
+app.on('window-all-closed', () => { if(!tray?.ready) app.quit(); });
 app.on('before-quit', event => {
   if (shutdownComplete) return;
   event.preventDefault();
-  if (quitting) return;
-  quitting = true;
-  (async () => {
+  if (quitting || quitTask) return;
+  quitTask = (async () => {
+    if (window && !window.isDestroyed() && pageMode === 'viewer' && uiSource?.trustedPage(window.webContents.getURL())) {
+      const current = window.webContents.getURL();
+      const dirty = await window.webContents.executeJavaScript('Boolean(window.atbHasUnsavedChanges?.())');
+      if (dirty) {
+        const approved = await window.webContents.executeJavaScript('Promise.resolve(window.atbConfirmLeave?.() ?? false)');
+        if (approved !== true || !window || window.isDestroyed() || window.webContents.getURL() !== current) return;
+      }
+    }
+    quitting = true;
     await connectionTask?.catch(() => {});
     await profileWrites.catch(error => console.error('保存连接设置失败:', error.message));
-    if (window && !window.isDestroyed() && service && isTrustedUrl(window.webContents.getURL(), service.origin)) {
+    if (window && !window.isDestroyed() && uiSource?.trustedPage(window.webContents.getURL())) {
       let timer;
       try {
         await Promise.race([
@@ -322,10 +424,11 @@ app.on('before-quit', event => {
       finally { clearTimeout(timer); }
     }
     await nativeModules?.close();
+    tray?.close();
     await localService?.close();
   })().catch(error => console.error('关闭服务失败:', error.message)).finally(() => {
-    shutdownComplete = true;
-    app.quit();
+    quitTask = null;
+    if (quitting) { shutdownComplete = true; app.quit(); }
   });
 });
 
@@ -337,7 +440,9 @@ else {
   });
   app.whenReady().then(openWindow).catch(async error => {
     console.error('ATB 启动失败:', error);
-    dialog.showErrorBox('ATB 启动失败', `${error.message}\n\n请确认配置的端口没有被其他应用占用，电脑已连接局域网。`);
-    app.quit();
+    if (window && !window.isDestroyed()) {
+      await showSettings(`ATB 启动失败：${error.message}\n请确认配置的端口没有被其他应用占用，电脑已连接局域网。`);
+      window.show();
+    } else app.quit();
   });
 }

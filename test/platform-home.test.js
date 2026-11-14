@@ -34,8 +34,9 @@ test('orbit home selects without navigation, opens the intended module and suppo
     servers.push(server);
     await server.accounts.setup('orbit-test', 'test-fixture-only');
     const session = await server.accounts.login('orbit-test', 'test-fixture-only');
-    const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1440, height: 960 } });
+    const context = await browser.newContext({ ignoreHTTPSErrors: true, reducedMotion: 'reduce', viewport: { width: 1440, height: 960 } });
     contexts.push(context);
+    await context.addInitScript(() => { const values = [.11, .99, .01, .99, .01]; let i = 0; Math.random = () => values[i++ % values.length]; });
     await context.addCookies([{ name: SESSION_COOKIE, value: session.token, domain: '127.0.0.1', path: '/', secure: true, httpOnly: true, sameSite: 'Strict' }]);
     const page = await context.newPage(), origin = 'https://127.0.0.1:' + server.secure.address().port;
     await page.goto(origin + '/platform');
@@ -44,15 +45,82 @@ test('orbit home selects without navigation, opens the intended module and suppo
   }
   const { page, origin } = await fixture('full', [['assistant', '智能助手'], ['freecamera', 'FreeCamera'], ['rustdesk', 'RustDesk']]);
   const errors = []; page.on('pageerror', error => errors.push(error.message));
+  async function homeFits(target, label) {
+    await target.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const layout = await target.evaluate(() => {
+      const viewport = { width: innerWidth, height: innerHeight };
+      const controls = [...document.querySelectorAll('.orbit-node, #module-open, .orbit-pagination button, .platform-footer')].filter(node => node.getClientRects().length);
+      const clipped = controls.filter(node => {
+        const r = node.getBoundingClientRect();
+        return r.left < -1 || r.top < -1 || r.right > innerWidth + 1 || r.bottom > innerHeight + 1;
+      }).map(node => node.id || node.className);
+      return { viewport, scroll: { width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight }, clipped };
+    });
+    assert.ok(layout.scroll.height <= layout.viewport.height + 1 && layout.scroll.width <= layout.viewport.width + 1, label + ': homepage stays within viewport ' + JSON.stringify(layout));
+    assert.deepEqual(layout.clipped, [], label + ': module controls and footer remain visible');
+  }
   assert.equal(await page.locator('.brand-word').textContent(), 'ATB');
   assert.equal(await page.locator('.brand small').textContent(), 'ALL THE BEST');
   assert.deepEqual(await page.locator('.platform-nav a').allTextContents(), ['工作台', '平台设置']);
   assert.equal(await page.locator('#connection, #logout').count(), 0);
-  for (const [width, height] of [[1240, 860], [1366, 768], [1440, 900], [1024, 720]]) {
+  for (const [width, height] of [[375, 667], [390, 844], [768, 700], [667, 375], [844, 390], [860, 620], [1240, 860], [1366, 768], [1440, 900], [1024, 720]]) {
     await page.setViewportSize({ width, height });
-    assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), 'home has no vertical overflow ' + width + 'x' + height);
+    await homeFits(page, width + 'x' + height);
     assert.ok(await page.locator('.platform-header').evaluate(node => node.getBoundingClientRect().height <= 60), 'compact header');
+    const insets = await page.evaluate(() => {
+      const brand = document.querySelector('.brand-word').getBoundingClientRect();
+      const content = document.querySelector('#page-overview').getBoundingClientRect();
+      return { left: brand.left, top: brand.top, contentLeft: content.left, contentRight: innerWidth - content.right };
+    });
+    assert.ok(Math.abs(insets.left - insets.top) <= 1, 'brand top and left insets match: ' + JSON.stringify(insets));
+    assert.ok(Math.abs(insets.contentLeft - insets.left) <= 1 && Math.abs(insets.contentRight - insets.left) <= 1, 'content uses the same side insets');
   }
+  const sizes = [];
+  for (const [width, height] of [[1000, 720], [1440, 900], [1920, 1080], [2560, 1440]]) {
+    await page.setViewportSize({ width, height });
+    sizes.push(await page.evaluate(() => ({
+      stage: document.querySelector('.orbit-stage').getBoundingClientRect().width,
+      planet: document.querySelector('.node-symbol').getBoundingClientRect().width,
+      title: parseFloat(getComputedStyle(document.querySelector('#module-name')).fontSize),
+    })));
+    assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), 'fluid desktop home fits ' + width);
+  }
+  for (let index = 1; index < sizes.length; index++) {
+    assert.ok(sizes[index].stage > sizes[index - 1].stage * 1.1, 'planetary scene grows with the window');
+    assert.ok(sizes[index].planet > sizes[index - 1].planet, 'module planets grow with the window');
+    assert.ok(sizes[index].title > sizes[index - 1].title, 'module heading scales with the window');
+  }
+  const satellite = page.locator('.orbit-node').first();
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  const beforeMotion = await satellite.evaluate(node => node.style.transform);
+  await page.waitForTimeout(180);
+  assert.notEqual(await satellite.evaluate(node => node.style.transform), beforeMotion, 'the actual module controls orbit continuously');
+  const movingTarget = await satellite.boundingBox();
+  await page.mouse.move(movingTarget.x + movingTarget.width / 2, movingTarget.y + movingTarget.height / 2);
+  const hoverPosition = await satellite.evaluate(node => node.style.transform);
+  await page.waitForTimeout(180);
+  assert.equal(await satellite.evaluate(node => node.style.transform), hoverPosition, 'pointer pauses motion for reliable selection');
+  await page.locator('#orbit-stage').hover({ position: { x: 2, y: 2 } });
+  await page.waitForTimeout(180);
+  assert.notEqual(await satellite.evaluate(node => node.style.transform), hoverPosition, 'hovering empty space keeps the scene alive');
+  await page.mouse.move(0, 0);
+  await page.locator('#orbit-motion').click();
+  await page.mouse.move(0, 0);
+  await page.locator('#orbit-motion').blur();
+  assert.equal(await page.locator('#orbit-motion').getAttribute('aria-pressed'), 'true');
+  const manualPosition = await satellite.evaluate(node => node.style.transform);
+  await page.waitForTimeout(180);
+  assert.equal(await satellite.evaluate(node => node.style.transform), manualPosition, 'explicit pause survives pointer exit');
+  await page.locator('#orbit-motion').click();
+  await page.mouse.move(0, 0);
+  await page.locator('#orbit-motion').blur();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const reducedPosition = await satellite.evaluate(node => node.style.transform);
+  await page.waitForTimeout(180);
+  assert.equal(await satellite.evaluate(node => node.style.transform), reducedPosition, 'reduced motion stops the orbit');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mkdir('test-results/orbit-home', { recursive: true });
+  await page.screenshot({ path: 'test-results/orbit-home/home-1440.png' });
   // A single click must leave time for the second click instead of opening immediately.
   assert.equal(await page.getByRole('button', { name: '选择FreeCamera', exact: true }).count(), 1);
   await page.getByRole('button', { name: '选择FreeCamera', exact: true }).click();
@@ -73,6 +141,10 @@ test('orbit home selects without navigation, opens the intended module and suppo
   await page.keyboard.press('ArrowRight');
   assert.equal(await page.locator('#module-name').textContent(), 'RustDesk');
   await page.locator('[data-page="settings"]').click();
+  await page.waitForFunction(() => document.documentElement.dataset.page === 'settings');
+  await page.setViewportSize({ width: 390, height: 667 });
+  assert.ok(await page.locator('#content').evaluate(node => node.scrollHeight > node.clientHeight), 'settings scroll inside the content viewport');
+  assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight), 'settings never add a document scrollbar');
   await page.locator('#server-label').fill('Orbit test');
   await page.locator('#server-host').fill('example.com');
   await page.locator('#server-form button[type="submit"]').click();
@@ -98,6 +170,27 @@ test('orbit home selects without navigation, opens the intended module and suppo
   await page.waitForFunction(() => document.getElementById('ai-key-state').dataset.configured === 'true');
   assert.equal(await page.locator('#ai-selected-models .model-chip').count(), 2);
   assert.equal(await page.locator('#ai-base-url').inputValue(), 'https://models.example.com/v1');
+  assert.equal(await page.locator('#billing-state').textContent(), '未配置');
+  assert.equal(await page.locator('#billing-query').isDisabled(), true);
+  await page.locator('#billing-ak').fill('fixture-billing-ak');
+  await page.locator('#billing-sk').fill('fixture-billing-sk');
+  await page.locator('#billing-form [type=submit]').click();
+  await page.waitForFunction(() => document.querySelector('#billing-state').textContent === '已配置');
+  assert.equal(await page.locator('#billing-ak').inputValue(), '');
+  assert.equal(await page.locator('#billing-sk').inputValue(), '');
+  assert.equal(await page.locator('#billing-query').isDisabled(), false);
+  await page.route('**/api/platform/billing/volcengine/balance?refresh=1', route => route.fulfill({ json: { kind: 'balance', available: '77.01', cash: '83.01' } }));
+  await page.locator('#billing-query').click();
+  await page.waitForFunction(() => document.querySelector('#billing-result').textContent.includes('可用余额 77.01'));
+  await page.reload();
+  await page.getByRole('tab', { name: 'AI 接口', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('#billing-state').textContent === '已配置');
+  assert.equal(await page.locator('#billing-sk').inputValue(), '');
+  await page.locator('#billing-clear').check();
+  assert.equal(await page.locator('#billing-query').isDisabled(), true);
+  await page.locator('#billing-form [type=submit]').click();
+  await page.waitForFunction(() => document.querySelector('#billing-state').textContent === '未配置');
+  await page.unroute('**/api/platform/billing/volcengine/balance?refresh=1');
   await page.getByRole('tab', { name: '账户', exact: true }).click();
   let submitted, release;
   const submittedRequest = new Promise(resolve => { submitted = resolve; });
@@ -188,6 +281,35 @@ test('orbit home selects without navigation, opens the intended module and suppo
     assert.equal(await dense.page.locator('#module-name').textContent(), '一个名称比较长的工具模块');
     assert.equal(await dense.page.locator('#orbit-page-status').textContent(), '1 / 5');
   }
+  for (const [width, height] of [[375, 667], [390, 844], [667, 375], [844, 390], [860, 620], [1240, 620], [1920, 720]]) {
+    await dense.page.setViewportSize({ width, height });
+    await homeFits(dense.page, 'paged ' + width + 'x' + height);
+  }
+  // Sample a full revolution with real layout/hit testing, including short windows.
+  await dense.page.clock.install();
+  await dense.page.emulateMedia({ reducedMotion: 'no-preference' });
+  for (const [width, height] of [[390, 844], [667, 375], [1440, 900]]) {
+    await dense.page.setViewportSize({ width, height });
+    await dense.page.mouse.move(0, 0);
+    await dense.page.evaluate(() => document.activeElement?.blur());
+    for (let sample = 0; sample < 32; sample++) {
+      await dense.page.clock.runFor(5000);
+      const overlaps = await dense.page.locator('.orbit-node').evaluateAll(nodes => {
+        const rects = nodes.map(node => node.getBoundingClientRect()), issues = [];
+        for (let i = 0; i < nodes.length; i++) {
+          const r = rects[i];
+          if (document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('.orbit-node') !== nodes[i]) issues.push('covered ' + i);
+          for (let j = i + 1; j < nodes.length; j++) {
+            const s = rects[j];
+            if (r.left < s.right && r.right > s.left && r.top < s.bottom && r.bottom > s.top) issues.push('overlap ' + i + '/' + j + ': ' + JSON.stringify([r.toJSON(), s.toJSON()]));
+          }
+        }
+        return issues;
+      });
+      assert.deepEqual(overlaps, [], 'moving controls stay separate and clickable ' + width + 'x' + height + ', sample ' + sample);
+    }
+  }
+  await dense.page.emulateMedia({ reducedMotion: 'reduce' });
   await dense.page.locator('.orbit-node[aria-pressed="true"]').press('End');
   await dense.page.getByRole('button', { name: '选择工具 20', exact: true }).dblclick();
   await dense.page.waitForURL(dense.origin + '/modules/tool20/');

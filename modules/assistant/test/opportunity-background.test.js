@@ -1,0 +1,34 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import {readFile} from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {chromium} from 'playwright';
+const root=fileURLToPath(new URL('..',import.meta.url));
+test('actual background renderer runs opportunities without camera/microphone, none stays silent and logout stops it',async t=>{
+ const manifest=JSON.parse(await readFile(path.join(root,'module.json'),'utf8'));
+ const server=http.createServer(async(req,res)=>{const url=new URL(req.url,'http://local').pathname;const asset=manifest.assets[url];if(!asset){res.writeHead(404);res.end();return;}res.setHeader('content-type',asset.endsWith('.js')?'text/javascript':asset.endsWith('.html')?'text/html':'text/css');res.end(await readFile(path.join(root,asset)));});
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch();t.after(async()=>{await browser.close();await new Promise(r=>server.close(r));});
+ const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>{const original=Date.now;window.advance=0;Date.now=()=>original()+window.advance;window.bridgeCalls=[];window.atbPresence={onFrame:()=>{},call:async(action,options)=>{window.bridgeCalls.push({action,options});if(action==='availability')return {busy:false,lastInteraction:0};if(action==='voice')return {settings:{enabled:false}};return {};}};Object.defineProperty(document,'hidden',{get:()=>true});});
+ let account='alice',reply='',posts=0;
+ await page.route('**/api/**',async route=>{const url=new URL(route.request().url()).pathname;let value;
+  if(url==='/api/auth/session')value={user:account?{username:account}:null};
+  else if(url==='/api/assistant/settings')value={proactiveChat:true,name:'小鲸鱼'};
+  else if(url==='/api/assistant/presence')value={enabled:false,quietEnabled:false,timeZone:'Asia/Shanghai',revision:'fixture',people:[],outputId:''};
+  else if(url==='/api/assistant/opportunity'){posts++;value={reply,action:reply?'chat':'none',id:'opportunity-one'};}
+  else throw Error('unexpected network '+url);
+  await route.fulfill({json:value});
+ });
+ await page.goto('http://127.0.0.1:'+server.address().port+'/modules/assistant/presence-background.html');
+ await page.waitForFunction(()=>window.bridgeCalls.some(c=>c.action==='camera'));await page.waitForTimeout(100);assert.equal(posts,1);
+ assert.equal(await page.evaluate(()=>window.bridgeCalls.some(c=>c.action==='stop')),false,'camera disabled does not stop opportunity runtime');
+ assert.equal(await page.evaluate(()=>window.bridgeCalls.some(c=>c.action==='voice')),false,'none must not start synthesis');
+ assert.equal(await page.evaluate(()=>window.bridgeCalls.some(c=>c.action==='camera'&&c.options.cameraId)),false);
+ reply='刚才想起一件有趣的事';await page.evaluate(()=>{window.advance+=31000;});await page.waitForFunction(()=>window.bridgeCalls.some(c=>c.options?.event==='随机机会：选择聊天'));
+ assert.deepEqual(await page.evaluate(()=>window.bridgeCalls.filter(c=>c.action==='companion'&&c.options.type==='proactive').map(c=>c.options)),[{type:'proactive',account:'alice',text:reply}],'a fresh proactive reply is sent once to the character bubble');
+ assert.equal(posts,2);const voice=await page.evaluate(()=>window.bridgeCalls.filter(c=>c.action==='voice').map(c=>c.options.action));assert.deepEqual(voice,['status'],'disabled synthesis never opens microphone or worker');
+ const stored=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('homebase.chat.alice')));assert.equal(stored.at(-1).content,reply);
+ account=null;await page.waitForFunction(()=>window.bridgeCalls.some(c=>c.action==='stop'));assert.deepEqual(errors,[]);
+});

@@ -29,7 +29,7 @@ let app, browser;
 try {
   let page;
   if (desktopMode) {
-    const env = { ...process.env, FREECAMERA_DATA_DIR: dir, LAN_IP: '127.0.0.1', HTTPS_PORT: String(httpsPort), HTTP_PORT: String(httpPort), TURN_PORT: '0' }; delete env.ELECTRON_RUN_AS_NODE;
+    const env = { ...process.env, ATB_DATA_DIR: dir, FREECAMERA_DATA_DIR: dir, LAN_IP: '127.0.0.1', HTTPS_PORT: String(httpsPort), HTTP_PORT: String(httpPort), TURN_PORT: '0' }; delete env.ELECTRON_RUN_AS_NODE;
     const require = createRequire(import.meta.url), executable = process.env.FREECAMERA_DESKTOP_EXECUTABLE;
     app = await electron.launch({ executablePath: executable || require('electron'), args: executable ? args : [root, ...args], env });
     page = await app.firstWindow();
@@ -51,8 +51,6 @@ try {
   const modelConfig = liveModel ? (await (await import('../../../server/shared-settings.js')).SharedSettings.load(path.join(root, 'data'))).get('ai') : null;
   await page.route('**/api/assistant/chat', async route => {
     requests++;
-    // Hold the initial text request to exercise switching to voice while it is pending.
-    if (requests === 1) return;
     if (!liveModel) { await route.fulfill({ json: { reply: '语音对话连接正常。' } }); return; }
     const { messages } = route.request().postDataJSON();
     const instructions = '这是一项语音链路测试。请仅回复“语音对话连接正常。”';
@@ -63,18 +61,21 @@ try {
     assert.ok(answer); await route.fulfill({ json: { reply: answer } });
   });
   await page.locator('[data-page=assistant]').click(); await page.waitForFunction(() => !document.querySelector('#voice-start').disabled);
-  await page.locator('#chat-input').fill('等待中的文字请求'); await page.locator('#chat-form [type=submit]').click();
-  await page.waitForFunction(() => document.querySelector('#chat-state').textContent === '正在思考…');
+  await page.locator('#toggle-transcript').click();
+  assert.equal(await page.locator('#transcript textarea, #transcript form').count(), 0);
   await page.locator('#voice-start').click();
   await page.waitForFunction(() => document.querySelector('#voice-live').dataset.phase === 'speaking', {}, { timeout: 60000 });
   assert.match(await page.locator('.bubble.user').last().textContent(), /[\u4e00-\u9fff]{3}/);
-  assert.match(await page.locator('.bubble.assistant').last().textContent(), /语音/); assert.equal(requests, 2);
+  assert.match(await page.locator('.bubble.assistant').last().textContent(), /语音/); assert.equal(requests, 1);
   await page.locator('#voice-stop').click(); await page.waitForFunction(() => document.querySelector('#voice-live').dataset.phase === 'off');
   const state = await page.evaluate(async () => window.atbDesktop?.hasModule('assistant') ? window.atbDesktop.invokeModule('assistant', 'voice', { action: 'status' }) : (await fetch('/api/assistant/voice/status')).json());
   assert.equal(state.pid, null); assert.equal(await page.evaluate(() => window.testVoiceTracks.every(track => track.readyState === 'ended')), true);
-  await page.locator('[data-page=voice]').click(); await page.locator('#voice-name').selectOption('zh-CN-YunxiNeural'); await page.locator('#voice-rate').selectOption('25'); await page.locator('#voice-form [type=submit]').click(); await page.waitForFunction(() => document.querySelector('#voice-state').textContent === '已保存');
+  await page.locator('[data-page=voice]').click(); await page.locator('#voice-name').selectOption('zh-CN-YunxiNeural');
+  for (const [id, value] of [['voice-rate', 25], ['voice-volume', -10], ['voice-pitch', 15]]) await page.locator('#' + id).evaluate((el, value) => { el.value = value; el.dispatchEvent(new Event('input', { bubbles: true })); }, value);
+  await page.locator('#voice-form [type=submit]').click(); await page.waitForFunction(() => document.querySelector('#voice-state').textContent === '已保存');
   await page.reload(); await page.locator('#workspace').waitFor(); await page.waitForFunction(() => document.querySelector('#voice-name').value === 'zh-CN-YunxiNeural');
   assert.equal(await page.locator('#voice-rate').inputValue(), '25');
+  assert.equal(await page.locator('#voice-volume').inputValue(), '-10'); assert.equal(await page.locator('#voice-pitch').inputValue(), '15');
   for (const width of [390, 1440]) { await page.setViewportSize({ width, height: 960 }); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true); await page.screenshot({ path: path.join(evidence, `${desktopMode ? 'desktop' : 'browser'}-settings-${width}.png`), fullPage: true }); }
   assert.deepEqual(errors, []);
   console.log(`PASS: ${desktopMode ? remoteService ? 'desktop IPC with separate remote service' : 'desktop IPC' : 'authenticated browser HTTP'} real microphone capture -> Silero/SenseVoice -> ${liveModel ? 'live third-party model' : 'test model'} -> real EdgeTTS playback, stop releases worker/mic, settings persist`);

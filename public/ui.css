@@ -1,4 +1,79 @@
 :root{color-scheme:dark;--atb-bg:#0d1017;--atb-panel:#151b27;--atb-raised:#202a3a;--atb-line:#ffffff14;--atb-text:#e9edf5;--atb-muted:#9ca9bd;--atb-accent:#dce4ef;--atb-ink:#182131}
+/* One scrollbar palette for pages, lists, conversations and dialogs. */
+:root{--atb-scroll-track:#0d1017;--atb-scroll-thumb:#4c5e78;--atb-scroll-hover:#758ba8}
+*{scrollbar-width:thin;scrollbar-color:var(--atb-scroll-thumb) var(--atb-scroll-track);overscroll-behavior:contain}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track,::-webkit-scrollbar-corner{background:var(--atb-scroll-track)}
+::-webkit-scrollbar-thumb{background:var(--atb-scroll-thumb);border:2px solid var(--atb-scroll-track);border-radius:8px}
+::-webkit-scrollbar-thumb:hover{background:var(--atb-scroll-hover)}
+@media(forced-colors:active){*{scrollbar-color:auto}}
 html,body{background:var(--atb-bg)}body.atb-ready{animation:atb-arrive 240ms ease-out both}html.atb-leaving body{opacity:0;transform:translateY(-4px);transition:opacity 120ms ease,transform 120ms ease}
 @keyframes atb-arrive{from{opacity:0}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){body.atb-ready{animation:none}html.atb-leaving body{transform:none;transition:none}}
+
+/* Shared module navigation: one height, brand and return action across tools. */
+.atb-module-header.atb-module-header{height:56px;min-height:56px;display:flex;align-items:center;justify-content:flex-start;gap:18px;padding:0 28px;background:var(--atb-bg);border-bottom:1px solid var(--atb-line)}
+.atb-module-header.atb-module-header .brand{display:flex;align-items:center;gap:12px;white-space:nowrap;flex-shrink:0;font-size:21px;letter-spacing:0}
+.atb-module-header .brand strong{font-size:21px;font-weight:700;letter-spacing:1px}
+.atb-module-header.atb-module-header .brand small{display:inline;font-size:9px;font-weight:400;letter-spacing:1.4px;color:var(--atb-muted)}
+.atb-module-header.atb-module-header .atb-module-name{display:inline;font-size:11px;color:var(--atb-muted);border-left:1px solid var(--atb-line);padding-left:18px;white-space:nowrap}
+.atb-module-header.atb-module-header .atb-module-return{display:inline-flex;align-items:center;justify-content:center;gap:6px;margin:0 0 0 auto;min-height:32px;padding:5px 10px;border:1px solid #53637b;border-radius:7px;background:#ffffff04;font-size:12px;line-height:1.5;color:var(--atb-text);white-space:nowrap;max-width:none;transition:border-color .18s,background .18s}
+.atb-module-header .atb-module-return:hover{border-color:#94adc9;background:var(--atb-raised);color:var(--atb-text)}
+.atb-module-header .local-tag{display:none}
+.desktop .atb-module-header.atb-module-header{padding-right:136px;-webkit-app-region:drag;user-select:none}
+.desktop .atb-module-header a{-webkit-app-region:no-drag}
+@media(max-width:760px){.atb-module-header.atb-module-header{padding-left:16px;padding-right:16px;gap:10px}.atb-module-header .brand strong{font-size:19px}.atb-module-header.atb-module-header .brand small{display:none}.atb-module-header.atb-module-header .atb-module-name{padding-left:10px;font-size:10px}.atb-module-header.atb-module-header .atb-module-return{font-size:11px;padding:5px 8px}.desktop .atb-module-header.atb-module-header{padding-right:128px}}
+
+/* The menu owns its row; only the content below it scrolls. */
+html.atb-contained-page,html.atb-contained-page body{height:100%;overflow:hidden}
+.atb-page-shell.atb-page-shell{display:flex;flex-direction:column;height:100dvh;min-height:0;overflow:clip}
+.atb-page-shell>.atb-shell-header.atb-shell-header{position:relative;inset:auto;flex:0 0 56px;height:56px;min-height:56px;z-index:80}
+.atb-page-shell>.atb-scroll-region{flex:1 1 0;min-height:0;width:100%;margin-block:0;overflow-y:auto;overflow-x:clip;overscroll-behavior-y:contain}
+.atb-page-shell.atb-page-shell.shell{max-width:none;padding:0}
+.atb-page-shell.shell>.atb-scroll-region{padding-inline:max(28px,calc((100vw - 1352px)/2))}
+.atb-page-shell>main#main{max-width:none;padding-inline:max(28px,calc((100vw - 1240px)/2))}
+html[data-page=overview][data-authenticated=true] .atb-scroll-region{overflow:clip}
+@media(max-width:760px){.atb-page-shell.shell>.atb-scroll-region,.atb-page-shell>main#main{padding-inline:16px}}
+
+/* Floating thumbs keep the full content width on Windows as well as macOS. */
+[data-atb-scrollable]{scrollbar-width:none!important}
+[data-atb-scrollable]::-webkit-scrollbar{display:none}
+.atb-scrollbar{position:fixed;width:12px;z-index:60;touch-action:none;user-select:none;-webkit-app-region:no-drag;cursor:default}
+.atb-scrollbar[hidden]{display:none!important}
+.atb-scrollbar-thumb{position:absolute;left:4px;right:4px;border-radius:8px;background:var(--atb-scroll-thumb);opacity:.65}
+.atb-scrollbar:hover .atb-scrollbar-thumb,.atb-scrollbar[data-dragging] .atb-scrollbar-thumb{left:3px;right:3px;background:var(--atb-scroll-hover);opacity:1}
+@media(forced-colors:active){.atb-scrollbar-thumb{background:ButtonText}}
+
+/* All application dialogs use the platform surface, including module dialogs. */
+dialog{color:var(--atb-text);color-scheme:dark;background:var(--atb-panel);border:1px solid #43516a;border-radius:14px;box-shadow:0 24px 90px #0009;max-width:calc(100vw - 32px);max-height:calc(100dvh - 40px);-webkit-app-region:no-drag}
+dialog::backdrop{background:#050913b8;backdrop-filter:blur(5px)}
+dialog button:focus-visible,dialog input:focus-visible,dialog select:focus-visible,dialog textarea:focus-visible{outline:2px solid #a8c2e4;outline-offset:3px}
+dialog.atb-message-dialog{width:min(460px,calc(100vw - 32px));padding:26px;overflow:auto;font-family:inherit;box-sizing:border-box}
+.atb-message-dialog h2{margin:0 0 14px;font-size:18px;line-height:1.5;font-weight:600}
+.atb-message-dialog p{margin:0;color:var(--atb-text);font-size:14px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
+.atb-message-dialog .atb-dialog-detail{margin-top:10px;color:var(--atb-muted);font-size:12px}
+.atb-dialog-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px;margin-top:26px}
+.atb-message-dialog button{width:auto;margin:0;min-height:36px;padding:7px 13px;border:1px solid #5b6b83;border-radius:7px;background:#202a3a;color:var(--atb-text);font:inherit;font-size:13px;cursor:pointer}
+.atb-message-dialog button:hover{background:#2a374b;border-color:#8ca2bf}
+.atb-message-dialog .atb-dialog-confirm{background:#dce4ef;color:#182131;border-color:#dce4ef}
+.atb-message-dialog .atb-dialog-confirm:hover{background:#f1f5fa}
+
+/* Shared settings groups: native keyboard-accessible disclosure and generous spacing. */
+.atb-settings-section{margin:0;padding:0;min-width:0;overflow:visible}
+.atb-settings-section>summary{display:flex;align-items:center;gap:12px;cursor:pointer;list-style:none;padding:20px 24px;color:#dbe5f3;font-size:15px;font-weight:600;line-height:1.5;border-radius:inherit}
+.atb-settings-section>summary::-webkit-details-marker{display:none}
+.atb-settings-section>summary:after{content:'⌄';margin-left:auto;font-size:19px;color:#97abc6;transition:transform .15s}
+.atb-settings-section:not([open])>summary:after{transform:rotate(-90deg)}
+.atb-settings-section>summary:hover{background:#1c273533}
+.atb-settings-section>summary:focus-visible{outline:2px solid #9ab9e2;outline-offset:-3px}
+.atb-settings-section[open]>summary{border-bottom:1px solid var(--line,#2d3a4e);border-bottom-left-radius:0;border-bottom-right-radius:0}
+.atb-settings-section>.settings,.atb-settings-section>.atb-settings-body{margin:0;padding:24px;border:0;border-radius:0;background:transparent;max-width:none}
+.settings-stack{display:grid;gap:22px;min-width:0}
+.settings-stack>.form-heading{margin-bottom:0}
+.atb-settings-body>:first-child{margin-top:0}
+.atb-settings-body>:last-child{margin-bottom:0}
+@media(max-width:600px){.atb-settings-section>summary{padding:17px 18px;font-size:14px}.atb-settings-section>.settings,.atb-settings-section>.atb-settings-body{padding:18px}.settings-stack{gap:18px}}
+
+/* Labels own only their control and caption, never the trailing row space. */
+label:has(>input:is([type=checkbox],[type=radio])):not(.switch){width:fit-content!important;max-width:100%;justify-self:start;align-self:flex-start;flex-grow:0!important}
+.settings>button,.settings-stack>button{width:fit-content;max-width:100%;justify-self:start;align-self:flex-start}

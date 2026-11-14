@@ -1,0 +1,1891 @@
+{
+  "repository": "csukuangfj/kokoro-multi-lang-v1_1",
+  "revision": "423bfb9ccd6a66115a76602a9630ffea265ae176",
+  "files": [
+    {
+      "path": "LICENSE",
+      "size": 11358,
+      "gitSha1": "d645695673349e3947e8e5ae42332d0ac3164cd7"
+    },
+    {
+      "path": "README.md",
+      "size": 114,
+      "gitSha1": "9a76d7b77d202bdbf2a5bc96ad58b3b34d4b950d"
+    },
+    {
+      "path": "date-zh.fst",
+      "size": 59154,
+      "gitSha1": "20ec7f4c077f9ec85ca9d01c4b4f4581f6e552ee"
+    },
+    {
+      "path": "dict/README.md",
+      "size": 683,
+      "gitSha1": "887911898611a1032f606bdbbdd6315b7bf992f6"
+    },
+    {
+      "path": "dict/generate_user_dict.py",
+      "size": 545,
+      "gitSha1": "68fd2a5b75ec9c3b691b2a205b70e424cd520f17"
+    },
+    {
+      "path": "dict/hmm_model.utf8",
+      "size": 519739,
+      "gitSha1": "2e1f807a0f31eeee3abe4cd1e0a0419d143af96a"
+    },
+    {
+      "path": "dict/idf.utf8",
+      "size": 5998717,
+      "gitSha1": "4ca9cecfc1d4108d639f06b83d42ab930a79fa92"
+    },
+    {
+      "path": "dict/jieba.dict.utf8",
+      "size": 5071204,
+      "gitSha1": "0015948de30f38fa97dd20adef231c1909bd8efd"
+    },
+    {
+      "path": "dict/pos_dict/char_state_tab.utf8",
+      "size": 327139,
+      "gitSha1": "e1e4d8d815b2938d199f14c922398714286eef95"
+    },
+    {
+      "path": "dict/pos_dict/prob_emit.utf8",
+      "size": 1687686,
+      "gitSha1": "cc207d11dc958a46f8f91d142bdb330f2b5d28a0"
+    },
+    {
+      "path": "dict/pos_dict/prob_start.utf8",
+      "size": 4347,
+      "gitSha1": "433750d56bed6affb5b1b2989044403bcef4448e"
+    },
+    {
+      "path": "dict/pos_dict/prob_trans.utf8",
+      "size": 124159,
+      "gitSha1": "87e5ac5ca772a625f0a0f67352e9b31d6872461c"
+    },
+    {
+      "path": "dict/stop_words.utf8",
+      "size": 8974,
+      "gitSha1": "32ac9e67dc44222534de99cc298dccd4b8de9907"
+    },
+    {
+      "path": "dict/user.dict.utf8",
+      "size": 829194,
+      "gitSha1": "8e4c4361ff61bf27215937f43311d744e2f2e4e7"
+    },
+    {
+      "path": "espeak-ng-data/af_dict",
+      "size": 121473,
+      "gitSha1": "b6259eff5157e3f14491217ab8838d70be760ddb"
+    },
+    {
+      "path": "espeak-ng-data/am_dict",
+      "size": 63878,
+      "gitSha1": "b2b04422e020d8705bc1a9932ff8eee4b6961789"
+    },
+    {
+      "path": "espeak-ng-data/an_dict",
+      "size": 6691,
+      "gitSha1": "d10d32cefb100a3c4ddbcd232cf2eb22639f6b63"
+    },
+    {
+      "path": "espeak-ng-data/ar_dict",
+      "size": 478165,
+      "gitSha1": "108ff2becba0de921c2ffc1e9208e64623d6b613"
+    },
+    {
+      "path": "espeak-ng-data/as_dict",
+      "size": 5005,
+      "gitSha1": "0bec8d9cf301d3dbf59c7b2cf91046af33591a34"
+    },
+    {
+      "path": "espeak-ng-data/az_dict",
+      "size": 43773,
+      "gitSha1": "77ca0917d2e22701f96bdbef5e6ebacb2e3dd673"
+    },
+    {
+      "path": "espeak-ng-data/ba_dict",
+      "size": 2098,
+      "gitSha1": "f175c683436a0e725b399702f4b3fd206ef4817f"
+    },
+    {
+      "path": "espeak-ng-data/be_dict",
+      "size": 2652,
+      "gitSha1": "39d7434e784cad1cdce9bbd432fa11e223e4c526"
+    },
+    {
+      "path": "espeak-ng-data/bg_dict",
+      "size": 87051,
+      "gitSha1": "ecd7f4a8dfa69fd2fcf4746ba58337e00b7afbd5"
+    },
+    {
+      "path": "espeak-ng-data/bn_dict",
+      "size": 89979,
+      "gitSha1": "604b80f0c3f723843f9b314ba1ec81f60e228e17"
+    },
+    {
+      "path": "espeak-ng-data/bpy_dict",
+      "size": 5226,
+      "gitSha1": "735496ff2f0de96af6bf9f3cc504b34369ba7b08"
+    },
+    {
+      "path": "espeak-ng-data/bs_dict",
+      "size": 47068,
+      "gitSha1": "71a38939fcc52f3af0b7d821b4c7556f65db8f23"
+    },
+    {
+      "path": "espeak-ng-data/ca_dict",
+      "size": 45566,
+      "gitSha1": "f134d4e865516475926501642d31e42d3ca92a05"
+    },
+    {
+      "path": "espeak-ng-data/chr_dict",
+      "size": 2859,
+      "gitSha1": "b48216ce469254f909ee00b038beb2d92e00bd9e"
+    },
+    {
+      "path": "espeak-ng-data/cmn_dict",
+      "size": 1566335,
+      "sha256": "109aaa7708d3727382acb3ae41d8e2094a7e2bb9f651a81835be22a6f08071fe"
+    },
+    {
+      "path": "espeak-ng-data/cs_dict",
+      "size": 49645,
+      "gitSha1": "cf916dab388320d9ccb9f699041c72bc3753b594"
+    },
+    {
+      "path": "espeak-ng-data/cv_dict",
+      "size": 1344,
+      "gitSha1": "79311d995e9e29fb255207d628944e1ddab389ea"
+    },
+    {
+      "path": "espeak-ng-data/cy_dict",
+      "size": 43130,
+      "gitSha1": "c4f738b51ddf72da4e07b6a00208fd8ac958c1c3"
+    },
+    {
+      "path": "espeak-ng-data/da_dict",
+      "size": 245287,
+      "gitSha1": "23be1ca5f591f7b7f1009b3841443c52c4b4c150"
+    },
+    {
+      "path": "espeak-ng-data/de_dict",
+      "size": 68276,
+      "gitSha1": "6f7697c737b3715a1f42222c811a8d8a92f1baf7"
+    },
+    {
+      "path": "espeak-ng-data/el_dict",
+      "size": 72841,
+      "gitSha1": "e6831f06bf823412350c657779ded7618424f353"
+    },
+    {
+      "path": "espeak-ng-data/en_dict",
+      "size": 166944,
+      "gitSha1": "b05b86152a011739d4cfebe716b43adcc9da76a2"
+    },
+    {
+      "path": "espeak-ng-data/eo_dict",
+      "size": 4666,
+      "gitSha1": "4ea54fe3ea595beb2b12e32cde9cb4c26ee358c9"
+    },
+    {
+      "path": "espeak-ng-data/es_dict",
+      "size": 49252,
+      "gitSha1": "c810ac740686e2dbdbb882f0cf3b2eb6b0fef6f1"
+    },
+    {
+      "path": "espeak-ng-data/et_dict",
+      "size": 44263,
+      "gitSha1": "f336d145bfbfc07088e3985ffea1aac780717aca"
+    },
+    {
+      "path": "espeak-ng-data/eu_dict",
+      "size": 48841,
+      "gitSha1": "ff71e0503760c9ca582634382d0ee23d34772ab7"
+    },
+    {
+      "path": "espeak-ng-data/fa_dict",
+      "size": 292423,
+      "gitSha1": "c67fb89ba0c0b0a9febd9245176a9547fe233d17"
+    },
+    {
+      "path": "espeak-ng-data/fi_dict",
+      "size": 43928,
+      "gitSha1": "a6028472fa331aa6ccd3f058339fd7d202cf1b97"
+    },
+    {
+      "path": "espeak-ng-data/fr_dict",
+      "size": 63727,
+      "gitSha1": "560a8c6fe9ce9a692ece627375a3315c66a78298"
+    },
+    {
+      "path": "espeak-ng-data/ga_dict",
+      "size": 52673,
+      "gitSha1": "65338e22252665f524cc8978a4919f7a0f4da3b6"
+    },
+    {
+      "path": "espeak-ng-data/gd_dict",
+      "size": 49121,
+      "gitSha1": "3ce4b954ff1511957e5f9efd61e8bd4334bc6668"
+    },
+    {
+      "path": "espeak-ng-data/gn_dict",
+      "size": 3248,
+      "gitSha1": "ee7fa4b406cf308a8da6730d2738c96fe73531d7"
+    },
+    {
+      "path": "espeak-ng-data/grc_dict",
+      "size": 3433,
+      "gitSha1": "1d9f3742c317fe8fec3fd1dbb50907a6111fb148"
+    },
+    {
+      "path": "espeak-ng-data/gu_dict",
+      "size": 82480,
+      "gitSha1": "245afbb4773e89bba9436b300182615035bfdda6"
+    },
+    {
+      "path": "espeak-ng-data/hak_dict",
+      "size": 3335,
+      "gitSha1": "38adf87ece01f89ebce7c9b184ef6d3114478683"
+    },
+    {
+      "path": "espeak-ng-data/haw_dict",
+      "size": 2443,
+      "gitSha1": "a78245c2cc3c86163411ef6a9c25cee51b2ceece"
+    },
+    {
+      "path": "espeak-ng-data/he_dict",
+      "size": 6963,
+      "gitSha1": "e1037a6951d6e8181ae12f6bc0ba7217d6d397bd"
+    },
+    {
+      "path": "espeak-ng-data/hi_dict",
+      "size": 92143,
+      "gitSha1": "c612100bc5a6a59e0d6d00341093a9ddc7dd1d88"
+    },
+    {
+      "path": "espeak-ng-data/hr_dict",
+      "size": 49388,
+      "gitSha1": "0ecec2df23ea541523645310f5cc85bd579bf81e"
+    },
+    {
+      "path": "espeak-ng-data/ht_dict",
+      "size": 1803,
+      "gitSha1": "ada2b70587abdf581e62c6c5ed022ec4c470e63e"
+    },
+    {
+      "path": "espeak-ng-data/hu_dict",
+      "size": 153785,
+      "gitSha1": "560dc2a264e240357cd1fcfe8baccc81df4783e1"
+    },
+    {
+      "path": "espeak-ng-data/hy_dict",
+      "size": 62263,
+      "gitSha1": "7fb0fe31e706bc80bcddbf690d49ac43fe580769"
+    },
+    {
+      "path": "espeak-ng-data/ia_dict",
+      "size": 331275,
+      "gitSha1": "2177d15355a1b2eb05dd904a31bee4bb6a435fd5"
+    },
+    {
+      "path": "espeak-ng-data/id_dict",
+      "size": 43458,
+      "gitSha1": "6e71d720cf83326b61d572f00b31e955c1c82e4a"
+    },
+    {
+      "path": "espeak-ng-data/intonations",
+      "size": 2040,
+      "gitSha1": "ca2d4b362c3dc1dac7b5da760c33f7ad9c96047a"
+    },
+    {
+      "path": "espeak-ng-data/io_dict",
+      "size": 2165,
+      "gitSha1": "e690ae89dd5cb5513c97d7b71d5341d780cb33b0"
+    },
+    {
+      "path": "espeak-ng-data/is_dict",
+      "size": 44354,
+      "gitSha1": "935799a4aa1358944a215b665c5c1b02892bc600"
+    },
+    {
+      "path": "espeak-ng-data/it_dict",
+      "size": 152889,
+      "gitSha1": "aef22eb0656145431bd1bf6c6a1ab2bb28545c36"
+    },
+    {
+      "path": "espeak-ng-data/ja_dict",
+      "size": 47652,
+      "gitSha1": "9b29e2d2c803051d71c4838afdb168fae9797ec5"
+    },
+    {
+      "path": "espeak-ng-data/jbo_dict",
+      "size": 2243,
+      "gitSha1": "938b323a35b15f1d902b37894b01ee481d0096c8"
+    },
+    {
+      "path": "espeak-ng-data/ka_dict",
+      "size": 87775,
+      "gitSha1": "a43848b2e3d8364fbf706e2cb740d7bb4dfabf2b"
+    },
+    {
+      "path": "espeak-ng-data/kk_dict",
+      "size": 1859,
+      "gitSha1": "7e02e2202a8713461d6f5b1613c70a3039e2534e"
+    },
+    {
+      "path": "espeak-ng-data/kl_dict",
+      "size": 2838,
+      "gitSha1": "10a0566cd496eec1dbe425c7f03f578a5236edd4"
+    },
+    {
+      "path": "espeak-ng-data/kn_dict",
+      "size": 87828,
+      "gitSha1": "6a41a8d58fc258e79eeea9e8e6d0e9bddfe98906"
+    },
+    {
+      "path": "espeak-ng-data/ko_dict",
+      "size": 47523,
+      "gitSha1": "fd206732baa6eb93a27c784231deca69b682218e"
+    },
+    {
+      "path": "espeak-ng-data/kok_dict",
+      "size": 6394,
+      "gitSha1": "136be4b84245bedc818e58ff7ecdc3b3961db77e"
+    },
+    {
+      "path": "espeak-ng-data/ku_dict",
+      "size": 2265,
+      "gitSha1": "bf3d745cc3af42222a44828ef41bf2a78f33ac22"
+    },
+    {
+      "path": "espeak-ng-data/ky_dict",
+      "size": 64977,
+      "gitSha1": "3ea39d99d53010e3a2f37fe6fd7d7df8e858ba44"
+    },
+    {
+      "path": "espeak-ng-data/la_dict",
+      "size": 3806,
+      "gitSha1": "3f30fd3fb492ef5b376188ff270709bc37de4184"
+    },
+    {
+      "path": "espeak-ng-data/lang/aav/vi",
+      "size": 111,
+      "gitSha1": "7808128d708fb0dcdf0d0b7f87efa4eabad6fd51"
+    },
+    {
+      "path": "espeak-ng-data/lang/aav/vi-VN-x-central",
+      "size": 143,
+      "gitSha1": "0defacaa6e3e0412f44adcd0a0404f73d4b4f6d8"
+    },
+    {
+      "path": "espeak-ng-data/lang/aav/vi-VN-x-south",
+      "size": 142,
+      "gitSha1": "4c32561d6b95b9715753bc50a1d6570bfd887a8d"
+    },
+    {
+      "path": "espeak-ng-data/lang/art/eo",
+      "size": 41,
+      "gitSha1": "e47501faef940e2f935350084f8d49b6a4ff6a32"
+    },
+    {
+      "path": "espeak-ng-data/lang/art/ia",
+      "size": 29,
+      "gitSha1": "6a14728771b428773f11afd28036e82ace24d0b1"
+    },
+    {
+      "path": "espeak-ng-data/lang/art/io",
+      "size": 50,
+      "gitSha1": "c50f9fabaff626a538020de2a85000907fba4913"
+    },
+    {
+      "path": "espeak-ng-data/lang/art/jbo",
+      "size": 69,
+      "gitSha1": "9cf2f3098dcfc611ce96feb498e4b8e82e0305eb"
+    },
+    {
+      "path": "espeak-ng-data/lang/art/lfn",
+      "size": 135,
+      "gitSha1": "d5e43871e3e19da947d7564b4efa59fc52d46585"
+    },
+    {
+      "path": "espeak-ng-data/lang/art/piqd",
+      "size": 56,
+      "gitSha1": "49367cd84d5f92fb3a1b3af582eb4d1b510f5a72"
+    },
+    {
+      "path": "espeak-ng-data/lang/art/py",
+      "size": 140,
+      "gitSha1": "850a34e870bfc384c85c509314dee96fd1529c13"
+    },
+    {
+      "path": "espeak-ng-data/lang/art/qdb",
+      "size": 57,
+      "gitSha1": "eb5ea363bd721d08bbb157f60390c55db556adc7"
+    },
+    {
+      "path": "espeak-ng-data/lang/art/qya",
+      "size": 173,
+      "gitSha1": "2b515813b48ce99fab0a72ac81bc022f1988615d"
+    },
+    {
+      "path": "espeak-ng-data/lang/art/sjn",
+      "size": 175,
+      "gitSha1": "f927bc93b8729011a0e4bae90c79e9b2bb554e7d"
+    },
+    {
+      "path": "espeak-ng-data/lang/azc/nci",
+      "size": 114,
+      "gitSha1": "f1896379e0d0fe63a325d9e49138066d97479a70"
+    },
+    {
+      "path": "espeak-ng-data/lang/bat/lt",
+      "size": 28,
+      "gitSha1": "7cdb1930f20db7a2ed80b4f0adfe41d2821dcbe8"
+    },
+    {
+      "path": "espeak-ng-data/lang/bat/ltg",
+      "size": 312,
+      "gitSha1": "1041d9e3bb94d68595b5962ea78805bf5eb66b8b"
+    },
+    {
+      "path": "espeak-ng-data/lang/bat/lv",
+      "size": 229,
+      "gitSha1": "70eb61dcb5ab1c303f66f3588375d0db0a87e3c8"
+    },
+    {
+      "path": "espeak-ng-data/lang/bnt/sw",
+      "size": 41,
+      "gitSha1": "d1a4db33cc76a2aa53e6cbdef185475706e6b46f"
+    },
+    {
+      "path": "espeak-ng-data/lang/bnt/tn",
+      "size": 42,
+      "gitSha1": "8b484e43647227abd923fb22711f5792c95ecf29"
+    },
+    {
+      "path": "espeak-ng-data/lang/ccs/ka",
+      "size": 124,
+      "gitSha1": "2a789b3c60ebf8b08193926c8d99559836645f09"
+    },
+    {
+      "path": "espeak-ng-data/lang/cel/cy",
+      "size": 37,
+      "gitSha1": "6d0213294bcbee353b58a90ab6fd21926386dfee"
+    },
+    {
+      "path": "espeak-ng-data/lang/cel/ga",
+      "size": 66,
+      "gitSha1": "9fea2ae7dd02a65fe819286022bbdf32b3afa1a4"
+    },
+    {
+      "path": "espeak-ng-data/lang/cel/gd",
+      "size": 51,
+      "gitSha1": "e416f6fa36def26fe7645e65de200c637b75418b"
+    },
+    {
+      "path": "espeak-ng-data/lang/cus/om",
+      "size": 39,
+      "gitSha1": "1d6b396defd28e39a093a234c62d2d5aae29e2f0"
+    },
+    {
+      "path": "espeak-ng-data/lang/dra/kn",
+      "size": 55,
+      "gitSha1": "a32732c4551286acc9203506d6651d2b12a93c46"
+    },
+    {
+      "path": "espeak-ng-data/lang/dra/ml",
+      "size": 57,
+      "gitSha1": "92394bbcb29dcfa4f010467b9f7df9c46678380f"
+    },
+    {
+      "path": "espeak-ng-data/lang/dra/ta",
+      "size": 51,
+      "gitSha1": "aae63348a624705561ec4800990168fbfe03a1e9"
+    },
+    {
+      "path": "espeak-ng-data/lang/dra/te",
+      "size": 70,
+      "gitSha1": "8acbb1879d65664ef24b6ebe0d393250f7d62cee"
+    },
+    {
+      "path": "espeak-ng-data/lang/esx/kl",
+      "size": 30,
+      "gitSha1": "e581b58814d49bfbd060f80a16d2e3758235f480"
+    },
+    {
+      "path": "espeak-ng-data/lang/eu",
+      "size": 54,
+      "gitSha1": "ef132e5b83168f01e7ec76b533e7c9f43abe2b51"
+    },
+    {
+      "path": "espeak-ng-data/lang/gmq/da",
+      "size": 43,
+      "gitSha1": "58f02f15a7047676f47fccd99b78471478101653"
+    },
+    {
+      "path": "espeak-ng-data/lang/gmq/is",
+      "size": 27,
+      "gitSha1": "04bf5ad364789a3833f4d24f56a51de0ec815517"
+    },
+    {
+      "path": "espeak-ng-data/lang/gmq/nb",
+      "size": 87,
+      "gitSha1": "c29117f5308e85aab12aea73c149880b8586a989"
+    },
+    {
+      "path": "espeak-ng-data/lang/gmq/sv",
+      "size": 25,
+      "gitSha1": "bb2d0299e001268aa07e85318b83442cd826b3da"
+    },
+    {
+      "path": "espeak-ng-data/lang/gmw/af",
+      "size": 123,
+      "gitSha1": "64fc96f55bfe2520b30d73fc3bfd01638c2db6e6"
+    },
+    {
+      "path": "espeak-ng-data/lang/gmw/de",
+      "size": 42,
+      "gitSha1": "a43cc1a55385cb2955be6aa501588e8b26585bed"
+    },
+    {
+      "path": "espeak-ng-data/lang/gmw/en",
+      "size": 140,
+      "gitSha1": "f23fb53124eb2a927dd796154f3fdc41c38467fc"
+    },
+    {
+      "path": "espeak-ng-data/lang/gmw/en-029",
+      "size": 335,
+      "gitSha1": "493aae451c7859ed7b27afdc54ee37cf4926f78e"
+    },
+    {
+      "path": "espeak-ng-data/lang/gmw/en-GB-scotland",
+      "size": 295,
+      "gitSha1": "a4655a0e8bf9190e36dbc574d6e4267ea118a35c"
+    },
+    {
+      "path": "espeak-ng-data/lang/gmw/en-GB-x-gbclan",
+      "size": 238,
+      "gitSha1": "f54a06b7c662e1e7b558272f5bdaee8257bc52d9"
+    },
+    {
+      "path": "espeak-ng-data/lang/gmw/en-GB-x-gbcwmd",
+      "size": 188,
+      "gitSha1": "1831f9a9643766087e447184bfb49a4eeba651dd"
+    },
+    {
+      "path": "espeak-ng-data/lang/gmw/en-GB-x-rp",
+      "size": 249,
+      "gitSha1": "fb72cf1f796d2a247121277ed6dad2324aeb094b"
+    },
+    {
+      "path": "espeak-ng-data/lang/gmw/en-US",
+      "size": 257,
+      "gitSha1": "31db652b206219c5b66d6018144a4ff45fd663c9"
+    },
+    {
+      "path": "espeak-ng-data/lang/gmw/en-US-nyc",
+      "size": 271,
+      "gitSha1": "2d76f88a0a8429d754cfeb1470011a7ec6bbd829"
+    },
+    {
+      "path": "espeak-ng-data/lang/gmw/lb",
+      "size": 31,
+      "gitSha1": "79724594261cfe4f2d36b3f05813db963d67af30"
+    },
+    {
+      "path": "espeak-ng-data/lang/gmw/nl",
+      "size": 23,
+      "gitSha1": "a212fbef6256c1414d259aa3c3f3d1e4b2e3563c"
+    },
+    {
+      "path": "espeak-ng-data/lang/grk/el",
+      "size": 23,
+      "gitSha1": "548a01bcf017abbcc46437941f28b108e2a56ec7"
+    },
+    {
+      "path": "espeak-ng-data/lang/grk/grc",
+      "size": 99,
+      "gitSha1": "baa8b2c691a46217c99e3c3d149257fe988ed84a"
+    },
+    {
+      "path": "espeak-ng-data/lang/inc/as",
+      "size": 42,
+      "gitSha1": "23991ad7d3b0d0f31891290b5da62bb5ae2f1169"
+    },
+    {
+      "path": "espeak-ng-data/lang/inc/bn",
+      "size": 25,
+      "gitSha1": "c79180269e431d6116bb97102f6301e881432e36"
+    },
+    {
+      "path": "espeak-ng-data/lang/inc/bpy",
+      "size": 39,
+      "gitSha1": "b63bc8d1c67ae9d71fd53ea622c7ed04b9fcee31"
+    },
+    {
+      "path": "espeak-ng-data/lang/inc/gu",
+      "size": 42,
+      "gitSha1": "fcdacd21e9e98e4ca56adcea3a5c3b8ef61aa58b"
+    },
+    {
+      "path": "espeak-ng-data/lang/inc/hi",
+      "size": 23,
+      "gitSha1": "16ea3892959431fcb901c242525817669042a93f"
+    },
+    {
+      "path": "espeak-ng-data/lang/inc/kok",
+      "size": 26,
+      "gitSha1": "f2b1cc53a8bfb04efb49712f013f615d6307eb4a"
+    },
+    {
+      "path": "espeak-ng-data/lang/inc/mr",
+      "size": 41,
+      "gitSha1": "d9181f908b6dd2a3767e0c89326d767bce3b5293"
+    },
+    {
+      "path": "espeak-ng-data/lang/inc/ne",
+      "size": 37,
+      "gitSha1": "4b64cc2b0a8b934e3e789c3b82f618c178bbe4ae"
+    },
+    {
+      "path": "espeak-ng-data/lang/inc/or",
+      "size": 39,
+      "gitSha1": "95a990ecdc1f4fa0b267e03c32a6840ca0ecafa9"
+    },
+    {
+      "path": "espeak-ng-data/lang/inc/pa",
+      "size": 25,
+      "gitSha1": "0e9552d33dcd14c7cd4f6aa244d1706c8ab2648e"
+    },
+    {
+      "path": "espeak-ng-data/lang/inc/sd",
+      "size": 66,
+      "gitSha1": "51cf8afed21c85194fcbbbb2d253c894655645cd"
+    },
+    {
+      "path": "espeak-ng-data/lang/inc/si",
+      "size": 55,
+      "gitSha1": "3f877191fce068307567db93ed671aec9092613d"
+    },
+    {
+      "path": "espeak-ng-data/lang/inc/ur",
+      "size": 94,
+      "gitSha1": "16e546959d9037457ca27de709b12329f5ae5efd"
+    },
+    {
+      "path": "espeak-ng-data/lang/ine/hy",
+      "size": 61,
+      "gitSha1": "ee0be2fe32c29eb5b7d975eb85e5084a8864d90b"
+    },
+    {
+      "path": "espeak-ng-data/lang/ine/hyw",
+      "size": 365,
+      "gitSha1": "9d5fe86badd04a69dba17abdcee4045c10279d77"
+    },
+    {
+      "path": "espeak-ng-data/lang/ine/sq",
+      "size": 103,
+      "gitSha1": "9ace35766585509e735b71c888926b7c05b23cf0"
+    },
+    {
+      "path": "espeak-ng-data/lang/ira/fa",
+      "size": 90,
+      "gitSha1": "5a0c2b6d05020a9f29a53de0eb225a8852686a85"
+    },
+    {
+      "path": "espeak-ng-data/lang/ira/fa-Latn",
+      "size": 269,
+      "gitSha1": "02c6da6e1a88b492b021ef6f2b504181b2c9e05a"
+    },
+    {
+      "path": "espeak-ng-data/lang/ira/ku",
+      "size": 40,
+      "gitSha1": "b26bca250fc3e03c23c345ad18e49303c6e15551"
+    },
+    {
+      "path": "espeak-ng-data/lang/iro/chr",
+      "size": 569,
+      "gitSha1": "abe29382383b120877a30e5eba19ee1f85362789"
+    },
+    {
+      "path": "espeak-ng-data/lang/itc/la",
+      "size": 297,
+      "gitSha1": "c57270f92de40f4002bcfd7066bbe1b952b816af"
+    },
+    {
+      "path": "espeak-ng-data/lang/jpx/ja",
+      "size": 52,
+      "gitSha1": "20e21a1e9bdb38913ece9d00324add13579988fc"
+    },
+    {
+      "path": "espeak-ng-data/lang/ko",
+      "size": 51,
+      "gitSha1": "f03ba091b68d61453dcdac7e5a6cbc8c88cdc4da"
+    },
+    {
+      "path": "espeak-ng-data/lang/map/haw",
+      "size": 42,
+      "gitSha1": "c0869132769f42249d01d08d01cb5ddbdfff6a33"
+    },
+    {
+      "path": "espeak-ng-data/lang/miz/mto",
+      "size": 183,
+      "gitSha1": "eb0f75ff5b53f51aeadefd08bda1f1ba5330c1c5"
+    },
+    {
+      "path": "espeak-ng-data/lang/myn/quc",
+      "size": 210,
+      "gitSha1": "e8e0ec6bc2d2d70224ca65ab579ca5f9ac7f215e"
+    },
+    {
+      "path": "espeak-ng-data/lang/poz/id",
+      "size": 134,
+      "gitSha1": "d300372fbad3479491f79303c9021445f9c3d096"
+    },
+    {
+      "path": "espeak-ng-data/lang/poz/mi",
+      "size": 367,
+      "gitSha1": "fa1c71eb7dc334e3aaacf83722ea1aecc6c6acc7"
+    },
+    {
+      "path": "espeak-ng-data/lang/poz/ms",
+      "size": 430,
+      "gitSha1": "27a2712af2df7835b414597dd065e3a6d6bf46bb"
+    },
+    {
+      "path": "espeak-ng-data/lang/qu",
+      "size": 88,
+      "gitSha1": "aa717f296f4547dddc289569301231f41ae1c543"
+    },
+    {
+      "path": "espeak-ng-data/lang/roa/an",
+      "size": 27,
+      "gitSha1": "dc75aa8e82ebb38baec6510dc5fb929b9d1880a0"
+    },
+    {
+      "path": "espeak-ng-data/lang/roa/ca",
+      "size": 25,
+      "gitSha1": "54af356f7a222827df6f870679182d12af2e6dde"
+    },
+    {
+      "path": "espeak-ng-data/lang/roa/es",
+      "size": 63,
+      "gitSha1": "dc90e41c64f2e89713bd2e1cf06bd30c31227579"
+    },
+    {
+      "path": "espeak-ng-data/lang/roa/es-419",
+      "size": 167,
+      "gitSha1": "236bef0bf68d7ac1c887295714cefd2164b29a7d"
+    },
+    {
+      "path": "espeak-ng-data/lang/roa/fr",
+      "size": 79,
+      "gitSha1": "9e0b9440c5419b5f26ad9e845b35e7c9cc1b3a94"
+    },
+    {
+      "path": "espeak-ng-data/lang/roa/fr-BE",
+      "size": 84,
+      "gitSha1": "1a0311f94ffc2514ab6128b2e771441bf6eb7464"
+    },
+    {
+      "path": "espeak-ng-data/lang/roa/fr-CH",
+      "size": 86,
+      "gitSha1": "2e45fbd1903431ea4c34fac94d1ae4b9d76f441d"
+    },
+    {
+      "path": "espeak-ng-data/lang/roa/ht",
+      "size": 140,
+      "gitSha1": "8b5722584c03f947ed0eac26f0fd327121576551"
+    },
+    {
+      "path": "espeak-ng-data/lang/roa/it",
+      "size": 109,
+      "gitSha1": "ad7bb50e6016183958c9de74c9205aba749800d7"
+    },
+    {
+      "path": "espeak-ng-data/lang/roa/pap",
+      "size": 62,
+      "gitSha1": "b9e07fe03ecd05f481609a84a38dddfafaf45c86"
+    },
+    {
+      "path": "espeak-ng-data/lang/roa/pt",
+      "size": 95,
+      "gitSha1": "5041b511e1a584c3aabc742c9637ea4f1b20e2a6"
+    },
+    {
+      "path": "espeak-ng-data/lang/roa/pt-BR",
+      "size": 109,
+      "gitSha1": "52b850c38e0751b369fdd108ae411ce6ab9bd6b1"
+    },
+    {
+      "path": "espeak-ng-data/lang/roa/ro",
+      "size": 26,
+      "gitSha1": "94441efe88d71f8f7d3494eed80e78bde348577d"
+    },
+    {
+      "path": "espeak-ng-data/lang/sai/gn",
+      "size": 47,
+      "gitSha1": "6e183e5aea08c2eb43d57ea9e58fcc07bb1e41f7"
+    },
+    {
+      "path": "espeak-ng-data/lang/sem/am",
+      "size": 41,
+      "gitSha1": "87ed65a3a8aaf31050cd221ba1a3e26fdc9d88ce"
+    },
+    {
+      "path": "espeak-ng-data/lang/sem/ar",
+      "size": 50,
+      "gitSha1": "5219808639e8f00f3074c0122b8c9e4941cb7705"
+    },
+    {
+      "path": "espeak-ng-data/lang/sem/he",
+      "size": 40,
+      "gitSha1": "38cce90a6b877a7e0587ff467a2dc595587ecdfc"
+    },
+    {
+      "path": "espeak-ng-data/lang/sem/mt",
+      "size": 41,
+      "gitSha1": "ea8a3fce48af567f0426c8c6aecde0b9748cdf35"
+    },
+    {
+      "path": "espeak-ng-data/lang/sit/cmn",
+      "size": 686,
+      "gitSha1": "451016d7a1354467aa592dc438ebb0d9ce164252"
+    },
+    {
+      "path": "espeak-ng-data/lang/sit/cmn-Latn-pinyin",
+      "size": 161,
+      "gitSha1": "4b63db71687d812168078e5d02341db7381eff74"
+    },
+    {
+      "path": "espeak-ng-data/lang/sit/hak",
+      "size": 128,
+      "gitSha1": "0c3bf14c6008798929d4362b09e0b2abb302c4a2"
+    },
+    {
+      "path": "espeak-ng-data/lang/sit/my",
+      "size": 56,
+      "gitSha1": "3dbc767a878f06e5602f778f2172772e8d784f05"
+    },
+    {
+      "path": "espeak-ng-data/lang/sit/yue",
+      "size": 194,
+      "gitSha1": "d65fac1f0c08dd9bc6990324fdce98ff1078fa6e"
+    },
+    {
+      "path": "espeak-ng-data/lang/sit/yue-Latn-jyutping",
+      "size": 213,
+      "gitSha1": "2324cd7df408adfe2f2355a54019d2a8469c0236"
+    },
+    {
+      "path": "espeak-ng-data/lang/tai/shn",
+      "size": 92,
+      "gitSha1": "8d30384d1d1eb4ecf24e81d19575d08ac1dbd97b"
+    },
+    {
+      "path": "espeak-ng-data/lang/tai/th",
+      "size": 37,
+      "gitSha1": "9b337c1390bf22f8c5aed27c793b32c8b85877aa"
+    },
+    {
+      "path": "espeak-ng-data/lang/trk/az",
+      "size": 45,
+      "gitSha1": "fd9e4f33e8eee103bf5feef32bf8a7f793e5588a"
+    },
+    {
+      "path": "espeak-ng-data/lang/trk/ba",
+      "size": 25,
+      "gitSha1": "09fab4805761e10f099deb423dd5ce4aca17a347"
+    },
+    {
+      "path": "espeak-ng-data/lang/trk/cv",
+      "size": 40,
+      "gitSha1": "44e37f676fc6e4e5a4d904ebf8d0c05740e4bbaf"
+    },
+    {
+      "path": "espeak-ng-data/lang/trk/kk",
+      "size": 40,
+      "gitSha1": "df3b0a0784c307e2eabe389922b08a2c606814bc"
+    },
+    {
+      "path": "espeak-ng-data/lang/trk/ky",
+      "size": 43,
+      "gitSha1": "c031449e81bc81a8dd70031b88ad03939e3de51e"
+    },
+    {
+      "path": "espeak-ng-data/lang/trk/nog",
+      "size": 39,
+      "gitSha1": "691d0310678e3625a64090760b314ae18c94d017"
+    },
+    {
+      "path": "espeak-ng-data/lang/trk/tk",
+      "size": 25,
+      "gitSha1": "795413a3b3a83f58d6035e7b72a6e72898e6af24"
+    },
+    {
+      "path": "espeak-ng-data/lang/trk/tr",
+      "size": 25,
+      "gitSha1": "1d5cbc4955a00a20d5d2444edfa60b861c43ed77"
+    },
+    {
+      "path": "espeak-ng-data/lang/trk/tt",
+      "size": 23,
+      "gitSha1": "10ebba4c1c47d91b99a9f4f0914b9a69bf539325"
+    },
+    {
+      "path": "espeak-ng-data/lang/trk/ug",
+      "size": 24,
+      "gitSha1": "f81b44fc01eee002d8d11cb7eda9a872fb67a5ac"
+    },
+    {
+      "path": "espeak-ng-data/lang/trk/uz",
+      "size": 39,
+      "gitSha1": "b1a7586c0368b48da098d88cfc9185c029089b71"
+    },
+    {
+      "path": "espeak-ng-data/lang/urj/et",
+      "size": 237,
+      "gitSha1": "096565f971760a3d951cd8052f6a257c226e7c76"
+    },
+    {
+      "path": "espeak-ng-data/lang/urj/fi",
+      "size": 237,
+      "gitSha1": "fe2447c897fc16c4e4e5cf1b851c2fec61fbefc0"
+    },
+    {
+      "path": "espeak-ng-data/lang/urj/hu",
+      "size": 73,
+      "gitSha1": "f5bb295851500cfdc971cc93596c1f4b186291ab"
+    },
+    {
+      "path": "espeak-ng-data/lang/urj/smj",
+      "size": 45,
+      "gitSha1": "316559cf378436760a7520902bfb85d9f2bc34f3"
+    },
+    {
+      "path": "espeak-ng-data/lang/zle/be",
+      "size": 52,
+      "gitSha1": "31b14e53dd60db67d99416d420361d77c364a383"
+    },
+    {
+      "path": "espeak-ng-data/lang/zle/ru",
+      "size": 57,
+      "gitSha1": "959754b6505a7e1145b202f4c2e09634a1530e66"
+    },
+    {
+      "path": "espeak-ng-data/lang/zle/ru-LV",
+      "size": 280,
+      "gitSha1": "fc9541baaf612902e3736d5102d4c84a4f7cd4db"
+    },
+    {
+      "path": "espeak-ng-data/lang/zle/ru-cl",
+      "size": 91,
+      "gitSha1": "ad100cafdc6eec479c14d8a57b9a242ab6d7f1c0"
+    },
+    {
+      "path": "espeak-ng-data/lang/zle/uk",
+      "size": 97,
+      "gitSha1": "b318c235d93d4d22d552035079d2ba26aa06ce45"
+    },
+    {
+      "path": "espeak-ng-data/lang/zls/bg",
+      "size": 111,
+      "gitSha1": "870c04240ab42c5612bc95c406dfa6dae916faa5"
+    },
+    {
+      "path": "espeak-ng-data/lang/zls/bs",
+      "size": 230,
+      "gitSha1": "01fd1746e0ca156928f5298484372656e3411c0d"
+    },
+    {
+      "path": "espeak-ng-data/lang/zls/hr",
+      "size": 262,
+      "gitSha1": "d1cae3a3fb7f244adad4f032c8f4d144e4f66d16"
+    },
+    {
+      "path": "espeak-ng-data/lang/zls/mk",
+      "size": 28,
+      "gitSha1": "380c20b6c29d79708915eecd2d796a79ca400add"
+    },
+    {
+      "path": "espeak-ng-data/lang/zls/sl",
+      "size": 43,
+      "gitSha1": "b7bf01f233519061fb6b054ddba2f609105a6248"
+    },
+    {
+      "path": "espeak-ng-data/lang/zls/sr",
+      "size": 250,
+      "gitSha1": "81e339072d93c67752fb72e129ec87158ccf0bc6"
+    },
+    {
+      "path": "espeak-ng-data/lang/zlw/cs",
+      "size": 23,
+      "gitSha1": "5c3bf2ac5b9c7ac39154b6890d8b0641597e6c77"
+    },
+    {
+      "path": "espeak-ng-data/lang/zlw/pl",
+      "size": 38,
+      "gitSha1": "b85f56be3585e926bd8f5c26ce3309e3936904c5"
+    },
+    {
+      "path": "espeak-ng-data/lang/zlw/sk",
+      "size": 24,
+      "gitSha1": "e849e61be357d0776423541b59486258019c5c06"
+    },
+    {
+      "path": "espeak-ng-data/lb_dict",
+      "size": 687931,
+      "gitSha1": "d0aee674c0a033c8c2b4fe9fc5243d91d569bf34"
+    },
+    {
+      "path": "espeak-ng-data/lfn_dict",
+      "size": 2793,
+      "gitSha1": "9a8d4f89e88ae4d7393710888fc10f2d8ef0b8fc"
+    },
+    {
+      "path": "espeak-ng-data/lt_dict",
+      "size": 49890,
+      "gitSha1": "d0dd29f6ea77d2b94c36b9166fbb2a22d692c81e"
+    },
+    {
+      "path": "espeak-ng-data/lv_dict",
+      "size": 66337,
+      "gitSha1": "60d70b1b1b54cb8632e35bc36c53fd846ce599c1"
+    },
+    {
+      "path": "espeak-ng-data/mi_dict",
+      "size": 1346,
+      "gitSha1": "b727a301324d4e90fd0740817782e0ed225f1fc0"
+    },
+    {
+      "path": "espeak-ng-data/mk_dict",
+      "size": 63859,
+      "gitSha1": "974626c1cbbb5b8bee5747c21564e78337d123ef"
+    },
+    {
+      "path": "espeak-ng-data/ml_dict",
+      "size": 92345,
+      "gitSha1": "e12f2227eaa41462dc68773a017848077aa53f8d"
+    },
+    {
+      "path": "espeak-ng-data/mr_dict",
+      "size": 87391,
+      "gitSha1": "2cbf14d5fdd463d6d462dcbdebe5cd8f0cc93756"
+    },
+    {
+      "path": "espeak-ng-data/ms_dict",
+      "size": 53541,
+      "gitSha1": "cb6fc297422570bc91527189f21e5934538c9518"
+    },
+    {
+      "path": "espeak-ng-data/mt_dict",
+      "size": 4384,
+      "gitSha1": "8cc965b99b13ded3613a50590619c7221549ec56"
+    },
+    {
+      "path": "espeak-ng-data/mto_dict",
+      "size": 3960,
+      "gitSha1": "280aaa44bb6da6170c5e02976cbf75dfbad03625"
+    },
+    {
+      "path": "espeak-ng-data/my_dict",
+      "size": 95948,
+      "gitSha1": "f60804ec7cd8cb7fcdefaef29c84a2cfb6228940"
+    },
+    {
+      "path": "espeak-ng-data/nci_dict",
+      "size": 1534,
+      "gitSha1": "4f001af82d7471b97f9a776c7633dee7f7bb6269"
+    },
+    {
+      "path": "espeak-ng-data/ne_dict",
+      "size": 95377,
+      "gitSha1": "fa8e29c609530624870c1fdf6b1b1f8713193735"
+    },
+    {
+      "path": "espeak-ng-data/nl_dict",
+      "size": 65979,
+      "gitSha1": "4b371b1c73aec6dd6a3d0080d679617ab4f7d998"
+    },
+    {
+      "path": "espeak-ng-data/no_dict",
+      "size": 4178,
+      "gitSha1": "e1805fac18fbe948e8e4438d8954125878f25ded"
+    },
+    {
+      "path": "espeak-ng-data/nog_dict",
+      "size": 3294,
+      "gitSha1": "0819a517441ad972c5febb7023c2e2da93ffcc3d"
+    },
+    {
+      "path": "espeak-ng-data/om_dict",
+      "size": 2302,
+      "gitSha1": "81fa80d2f63b62c18c8ce10decaee07d6a8c2867"
+    },
+    {
+      "path": "espeak-ng-data/or_dict",
+      "size": 89246,
+      "gitSha1": "ad2d1919f9fadaceaa17095988d133823de2106d"
+    },
+    {
+      "path": "espeak-ng-data/pa_dict",
+      "size": 79953,
+      "gitSha1": "08485ee87895c16e6f4296b325e1f2cc7c16338c"
+    },
+    {
+      "path": "espeak-ng-data/pap_dict",
+      "size": 2128,
+      "gitSha1": "3fccee67864fc213bbd1a57fa9c9a778a201eb17"
+    },
+    {
+      "path": "espeak-ng-data/phondata",
+      "size": 550424,
+      "gitSha1": "5b3c94a570dc3bdc6500dcd92602faa0640503bc"
+    },
+    {
+      "path": "espeak-ng-data/phondata-manifest",
+      "size": 21821,
+      "gitSha1": "e7eac9a723e6382941752716b1ed6f5fbcbc44c7"
+    },
+    {
+      "path": "espeak-ng-data/phonindex",
+      "size": 39074,
+      "gitSha1": "03ba8068e7ab71932d2d1b2d6e55b5d63447b30d"
+    },
+    {
+      "path": "espeak-ng-data/phontab",
+      "size": 55796,
+      "gitSha1": "5c25ca1f9ffd3d80c0bba5a5dea59edfdb9de573"
+    },
+    {
+      "path": "espeak-ng-data/piqd_dict",
+      "size": 1710,
+      "gitSha1": "7924788c97ca7098bf7d790a2e12f450e8ce025b"
+    },
+    {
+      "path": "espeak-ng-data/pl_dict",
+      "size": 76730,
+      "gitSha1": "dcb413212121d06e25f467a6dd5594a0f1e0430c"
+    },
+    {
+      "path": "espeak-ng-data/pt_dict",
+      "size": 67817,
+      "gitSha1": "c80197330f8c63a954cc0ff213197679230d9873"
+    },
+    {
+      "path": "espeak-ng-data/py_dict",
+      "size": 2409,
+      "gitSha1": "47b8123862b329cb8a4bc7f6c7fe2a0b2d3227a9"
+    },
+    {
+      "path": "espeak-ng-data/qdb_dict",
+      "size": 3028,
+      "gitSha1": "18a6895b46092243e36f8673ad486c24e93fe823"
+    },
+    {
+      "path": "espeak-ng-data/qu_dict",
+      "size": 1919,
+      "gitSha1": "afb6dcf0d44d221415f59abb8b7aebc09a689efb"
+    },
+    {
+      "path": "espeak-ng-data/quc_dict",
+      "size": 1450,
+      "gitSha1": "2361f7b5307db1d794bfc133572053b186a7a928"
+    },
+    {
+      "path": "espeak-ng-data/qya_dict",
+      "size": 1939,
+      "gitSha1": "946894306c2d286a58bce52ce81ae11d1d6fd30a"
+    },
+    {
+      "path": "espeak-ng-data/ro_dict",
+      "size": 68538,
+      "gitSha1": "22f7dfba34be2aeb4ff6950404e365447f9f699c"
+    },
+    {
+      "path": "espeak-ng-data/ru_dict",
+      "size": 8532392,
+      "sha256": "f0f6181bbbf9e53cd1e8f9d26bde8fc62119c4f78181948f961cb29866e5e585"
+    },
+    {
+      "path": "espeak-ng-data/sd_dict",
+      "size": 59928,
+      "gitSha1": "c877d4419625e7e8f415d4d46f5cb53925289b63"
+    },
+    {
+      "path": "espeak-ng-data/shn_dict",
+      "size": 88172,
+      "gitSha1": "625f6858bce5bfa8f1497bdcf5286ba506a630c8"
+    },
+    {
+      "path": "espeak-ng-data/si_dict",
+      "size": 85384,
+      "gitSha1": "9634893c3d783209cef8e8edb0ebdc73d12664fc"
+    },
+    {
+      "path": "espeak-ng-data/sjn_dict",
+      "size": 1783,
+      "gitSha1": "ba76f7c2bcb6cda2eeee21663228fda709a395ee"
+    },
+    {
+      "path": "espeak-ng-data/sk_dict",
+      "size": 50002,
+      "gitSha1": "cd99f8f0bb5d830a17160adffd4546bee69bf4d1"
+    },
+    {
+      "path": "espeak-ng-data/sl_dict",
+      "size": 45047,
+      "gitSha1": "e13eb491873c85d606b597d3d1767c36d9b803ef"
+    },
+    {
+      "path": "espeak-ng-data/smj_dict",
+      "size": 35095,
+      "gitSha1": "203230f56493577b79e3330db08b127b76c37662"
+    },
+    {
+      "path": "espeak-ng-data/sq_dict",
+      "size": 45003,
+      "gitSha1": "fccdbf3f0b699c8b7ebf1f95afbfa6d6b7fd0c9f"
+    },
+    {
+      "path": "espeak-ng-data/sr_dict",
+      "size": 46832,
+      "gitSha1": "63576dd3000c0b8155a8066d77a3008f2ac9ae3a"
+    },
+    {
+      "path": "espeak-ng-data/sv_dict",
+      "size": 47836,
+      "gitSha1": "a4e3f6d80bfa8aef1a09b48cecd692d8b9a2a936"
+    },
+    {
+      "path": "espeak-ng-data/sw_dict",
+      "size": 47804,
+      "gitSha1": "601f310cf01466e9cac43b379aceee256a5a49ef"
+    },
+    {
+      "path": "espeak-ng-data/ta_dict",
+      "size": 209553,
+      "gitSha1": "7e51266d12d6c3d1f88fafb425964dc367e5234c"
+    },
+    {
+      "path": "espeak-ng-data/te_dict",
+      "size": 94837,
+      "gitSha1": "36167c225f507c2268d2db372b2197a75852cd4c"
+    },
+    {
+      "path": "espeak-ng-data/th_dict",
+      "size": 2301,
+      "gitSha1": "f8689fdfb810a3960fd5a6b842a0758962c006bb"
+    },
+    {
+      "path": "espeak-ng-data/tk_dict",
+      "size": 20868,
+      "gitSha1": "e0dace413ebb64e700a24fa5b4ea957401b222c5"
+    },
+    {
+      "path": "espeak-ng-data/tn_dict",
+      "size": 3072,
+      "gitSha1": "ffa39622667b4fc3940cb757df66d8a091905276"
+    },
+    {
+      "path": "espeak-ng-data/tr_dict",
+      "size": 46793,
+      "gitSha1": "69d521fe51930cdcc03845b8a6c5c73440b63a11"
+    },
+    {
+      "path": "espeak-ng-data/tt_dict",
+      "size": 2121,
+      "gitSha1": "ef0b02bf07213d2ce66ec602b74165347f598cd1"
+    },
+    {
+      "path": "espeak-ng-data/ug_dict",
+      "size": 2070,
+      "gitSha1": "25f827fdebd0a278b4a3ee8cfc81c3c67c6a3090"
+    },
+    {
+      "path": "espeak-ng-data/uk_dict",
+      "size": 3492,
+      "gitSha1": "326dc4469f914466e5890b44fa7fbe38dbb09314"
+    },
+    {
+      "path": "espeak-ng-data/ur_dict",
+      "size": 133556,
+      "gitSha1": "cfc9693b70c84acb6fbdb6da0101edbf767cdc08"
+    },
+    {
+      "path": "espeak-ng-data/uz_dict",
+      "size": 2540,
+      "gitSha1": "c58fae50adba17c03470b8452e331c62f5e39832"
+    },
+    {
+      "path": "espeak-ng-data/vi_dict",
+      "size": 52608,
+      "gitSha1": "226a7990e387c3eb2ef0f1a55040b0908871c8db"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Alex",
+      "size": 128,
+      "gitSha1": "10c6b6e68680440d3b527ffc9416331a240dd159"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Alicia",
+      "size": 474,
+      "gitSha1": "d33ed3a246bfd0ac7d5f4668c6b6fa11e110e8ce"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Andrea",
+      "size": 357,
+      "gitSha1": "39fb18667a55a535bb7361d56cc162712664a0d1"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Andy",
+      "size": 320,
+      "gitSha1": "25582fb550cfbaf5ac8942b699a2c019ba90a6d5"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Annie",
+      "size": 315,
+      "gitSha1": "3c5b035551b0febe269c4935b41ab6074c35a2aa"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/AnxiousAndy",
+      "size": 361,
+      "gitSha1": "0ed1f35709eda69a01725cfc120c5dcb7e1f6e9c"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Demonic",
+      "size": 3858,
+      "gitSha1": "131fe46ad061d60a4829dec5ebdcaeca49b12dd2"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Denis",
+      "size": 305,
+      "gitSha1": "23c7fb70249820f3e83c7ef1de75309a06997f79"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Diogo",
+      "size": 379,
+      "gitSha1": "1e51396647e155aad997db6342c458fbbdf93488"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Gene",
+      "size": 281,
+      "gitSha1": "3db343bca1d8cbf5a6d0c7c4001a43b6d63458fb"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Gene2",
+      "size": 283,
+      "gitSha1": "20e8f6f334fb978432a5335852989eecc201b56a"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Henrique",
+      "size": 381,
+      "gitSha1": "d3fa3d745e8104d4c5c287dbc7fa680ad1aa61d3"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Hugo",
+      "size": 378,
+      "gitSha1": "fe79235caa980c00755824578ac7817e7b00987c"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Jacky",
+      "size": 267,
+      "gitSha1": "e0884ed07ac35ff0f4f251ea7772a833cf3e351d"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Lee",
+      "size": 338,
+      "gitSha1": "e0194fa314edeae00019e3c4e134473f3c935cbb"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Marco",
+      "size": 467,
+      "gitSha1": "455cb2644c138936078ce67921dc0c8b3ef6aa3c"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Mario",
+      "size": 270,
+      "gitSha1": "3ace369534e2c91b1e4ae44c018af8a35548d185"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Michael",
+      "size": 270,
+      "gitSha1": "e155ea856bed20290e271243c9522c4e873a2211"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Mike",
+      "size": 112,
+      "gitSha1": "93ea4d89402c811f0254c169105c5bd5472d8e58"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Mr serious",
+      "size": 3193,
+      "gitSha1": "4623c8486c714eafa399ff4b9dbc74ff2904ccab"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Nguyen",
+      "size": 280,
+      "gitSha1": "50c72fc697c24d3297885547883627ac60fc4ba7"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Reed",
+      "size": 202,
+      "gitSha1": "1ccdf5d4c3bf47bb1c4d51012237db71794058b3"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/RicishayMax",
+      "size": 233,
+      "gitSha1": "b269b64154a143efddefd5ebcb10c1059178d064"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/RicishayMax2",
+      "size": 435,
+      "gitSha1": "658513422979ae643cf5af53d5c614826208577c"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/RicishayMax3",
+      "size": 435,
+      "gitSha1": "f48100279d7db2b92f82af1711a9ae07e4ca9322"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Storm",
+      "size": 420,
+      "gitSha1": "6fd53bb47a018dcc7eb954996c8359143ac2433e"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/Tweaky",
+      "size": 3189,
+      "gitSha1": "f391d13b279c2ffce06eb5f0cd42f626b33a1e9c"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/UniRobot",
+      "size": 417,
+      "gitSha1": "f8892788da1acd19cae5f58c639e1ea08b205a5f"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/adam",
+      "size": 75,
+      "gitSha1": "a9f3d2ae32ad344b6493a452ed6304039c512c74"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/anika",
+      "size": 493,
+      "gitSha1": "2413c908c879b780b73edffba00dadf2cadca294"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/anikaRobot",
+      "size": 512,
+      "gitSha1": "791d2bbbb0c1a59a2a238abd728d0bb53ba3ffd9"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/announcer",
+      "size": 300,
+      "gitSha1": "71e0795d322ee12a3cc7f7feb984e0b61366a1f1"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/antonio",
+      "size": 381,
+      "gitSha1": "a41b681be53383ceec7b8da60598f45e0a948680"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/aunty",
+      "size": 358,
+      "gitSha1": "7d721eec885ad34f33757f9e3eca1c8c7fc62323"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/belinda",
+      "size": 340,
+      "gitSha1": "9a9e42b97aaf21781d9fff9adf07438d2cf67c1e"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/benjamin",
+      "size": 201,
+      "gitSha1": "c3006438358a8bdfc3e6f3070966799013835042"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/boris",
+      "size": 224,
+      "gitSha1": "02e03ced1e87eb7d663fe1051f2c0615ac4bcc2f"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/caleb",
+      "size": 57,
+      "gitSha1": "9c8a5b9ce9e954db5fd7e31199ab7cf0b5bfe44f"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/croak",
+      "size": 93,
+      "gitSha1": "ae76a4c4deb77d53e7ee512c3e85f45ba802dd08"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/david",
+      "size": 112,
+      "gitSha1": "7dc75ddbc558f61e1fb8e62f44236b9a5f86f477"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/ed",
+      "size": 287,
+      "gitSha1": "7f293fc684f4b27c7e95cf81a7a82e335702bb17"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/edward",
+      "size": 151,
+      "gitSha1": "303f50518bcc86bd3810eea2b2861a0c95a69f09"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/edward2",
+      "size": 152,
+      "gitSha1": "abee6aaa4c7d710c67698dd9a54900536b233427"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/f1",
+      "size": 324,
+      "gitSha1": "8f03a73a4722952860a41ec3800fdcb479806320"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/f2",
+      "size": 357,
+      "gitSha1": "4122d96b39bf2bc1025a1c57ef01b8b03936773d"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/f3",
+      "size": 375,
+      "gitSha1": "92a1582817dc2f8256db5a02bed320a05f6e5e43"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/f4",
+      "size": 350,
+      "gitSha1": "52c5ac93561331143a9caea14d6c0f008216b4e9"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/f5",
+      "size": 432,
+      "gitSha1": "7fa4f8826ae4d23cfd9770ea51413919e98df27f"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/fast",
+      "size": 149,
+      "gitSha1": "a2c3da2a9d7656ba8e4c3d2ee025ac03af118396"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/grandma",
+      "size": 263,
+      "gitSha1": "395ebe2203e880bc9366a1243074258d783906f2"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/grandpa",
+      "size": 256,
+      "gitSha1": "41a870c3fbc182bef1102e1e7253c651ec836fc4"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/gustave",
+      "size": 253,
+      "gitSha1": "ce1d71b947d2cf73f80571fe25f5909dd0e0fd0b"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/ian",
+      "size": 3168,
+      "gitSha1": "3e3d40901bdbd3e19cffc497ad6f7cd7a3e60bc1"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/iven",
+      "size": 261,
+      "gitSha1": "3b8c120263c6b0f18bd764408d5e79857986c062"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/iven2",
+      "size": 279,
+      "gitSha1": "e61fd73538ada58b0ea12791fe160d0b75093952"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/iven3",
+      "size": 262,
+      "gitSha1": "a58e74599e84a95be7c95ddc57b326cf9bed2545"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/iven4",
+      "size": 261,
+      "gitSha1": "43084c15d1ec12ec4170e886d914c06491c2e01f"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/john",
+      "size": 3186,
+      "gitSha1": "dce9446a0171b0759a406c8114910e0db96c2fa6"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/kaukovalta",
+      "size": 361,
+      "gitSha1": "82cda3318cf631d5840890f2f39af46c6274f18f"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/klatt",
+      "size": 38,
+      "gitSha1": "b739a86e488eeec6f5693b7ee2590f84d6c95191"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/klatt2",
+      "size": 38,
+      "gitSha1": "01477be5465c04d4cfd46ab95003f17445731d74"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/klatt3",
+      "size": 39,
+      "gitSha1": "b1a874be65ad7df189c933f4c576475f29d15f67"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/klatt4",
+      "size": 39,
+      "gitSha1": "65278087cbd1ab1d32164f458d385ec8a61131d0"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/klatt5",
+      "size": 39,
+      "gitSha1": "9d831fb213106b80bd42497099550cb56ac6e240"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/klatt6",
+      "size": 39,
+      "gitSha1": "7656ab355205ae2a1cf613f787b3126da659e3d3"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/linda",
+      "size": 350,
+      "gitSha1": "a56a8b05337ad8f8c5916061e887367aab35c617"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/m1",
+      "size": 335,
+      "gitSha1": "4cc9a00bf7597081158aad2e9a60ca1571259406"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/m2",
+      "size": 264,
+      "gitSha1": "c234f46877a761d5c98fda2cbbeb172dc2efc81a"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/m3",
+      "size": 300,
+      "gitSha1": "00479dc35082ef3724f143d895514567913d7c61"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/m4",
+      "size": 290,
+      "gitSha1": "7199341c34f93f5fa5219ff479e82edaee5d7936"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/m5",
+      "size": 262,
+      "gitSha1": "d25865608d7d973e77c77d13bbdbe3ae454d864d"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/m6",
+      "size": 188,
+      "gitSha1": "bd336a9884877889e2f85ee1849f8a068d2c6279"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/m7",
+      "size": 254,
+      "gitSha1": "11b49ed2a71db37f9af7c8305ec4006adc84bef3"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/m8",
+      "size": 284,
+      "gitSha1": "c03ca3eb300cb60e8a84c3fb514695871128bcb5"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/marcelo",
+      "size": 251,
+      "gitSha1": "8df9651b7a72e811a25e6ec14c578d7e4f9f4c30"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/max",
+      "size": 225,
+      "gitSha1": "e3c2889b9e8082512f9f280427d2ed5a29232b76"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/michel",
+      "size": 404,
+      "gitSha1": "b9b5ecbd5aa4b571d56820d72ac10ace83438a5f"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/miguel",
+      "size": 382,
+      "gitSha1": "53d71e78caea5f6868ee304f7125ea83e733b9af"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/mike2",
+      "size": 188,
+      "gitSha1": "2715f4d04fb4b2f9f7a91da8f5a74b2a19eea21f"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/norbert",
+      "size": 3189,
+      "gitSha1": "a210789ab3acacf7d85676e8af8eb221795762b3"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/pablo",
+      "size": 3142,
+      "gitSha1": "031e5fe7e4526901a3f071d01ee7c72ef7f83c7d"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/paul",
+      "size": 284,
+      "gitSha1": "9015cd3756624017a0e6ff975ceddc06b75cadb2"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/pedro",
+      "size": 352,
+      "gitSha1": "5cc34db2c249581d67f2e03d6c455088d70f21c3"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/quincy",
+      "size": 354,
+      "gitSha1": "dd75dadb81ca340f2e71171eb4d364e3aa22c1de"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/rob",
+      "size": 265,
+      "gitSha1": "d7c7ae4e16b403549d2c9fcd64d67c132b19183d"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/robert",
+      "size": 274,
+      "gitSha1": "46f50758e19dc5201baea7eba9b5c2ab4fb276a1"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/robosoft",
+      "size": 451,
+      "gitSha1": "0668d9ab71bec7f70c7111569daef3dfda956dd2"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/robosoft2",
+      "size": 454,
+      "gitSha1": "1695414aed649d6ae164e9c3ff543da8f1cd7ad3"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/robosoft3",
+      "size": 455,
+      "gitSha1": "15bbe347846484ec77b8c53e4cc8b66ee1f15fe8"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/robosoft4",
+      "size": 447,
+      "gitSha1": "5161a4fea38c8558c0834ad9657fda1124e95db1"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/robosoft5",
+      "size": 445,
+      "gitSha1": "2420f89c48c64937313049ce6488f54a03c83268"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/robosoft6",
+      "size": 287,
+      "gitSha1": "d3be1588fa7517e6ac6c6d92689a9029b8b97d64"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/robosoft7",
+      "size": 410,
+      "gitSha1": "25bf759b738a0262170fbd9f2007506537f82306"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/robosoft8",
+      "size": 243,
+      "gitSha1": "5c84bd5f18aa3d304828373dac51ce926d245cdc"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/sandro",
+      "size": 530,
+      "gitSha1": "6dcfe02f7a5b32f6960c23d913d627377ef54207"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/shelby",
+      "size": 280,
+      "gitSha1": "21292d418f95d73dc4eb1e8eacc6f4ef17deee90"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/steph",
+      "size": 364,
+      "gitSha1": "e60b0dc6393ffc383705e840a90ebae67a4fbd8c"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/steph2",
+      "size": 367,
+      "gitSha1": "6ac109be67537a5f525f733c188f3f202df160ad"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/steph3",
+      "size": 377,
+      "gitSha1": "a92575582d63f0454d78af8857be123fc5546ac7"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/travis",
+      "size": 383,
+      "gitSha1": "56c22f94020ca3fd164d075b11975f883c6e4ba0"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/victor",
+      "size": 253,
+      "gitSha1": "fa275e891824d6dc75c0c2c0ec47ed81e9609d0f"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/whisper",
+      "size": 186,
+      "gitSha1": "4f8f5e88f436d478b126c5c4eccf3568e398c26f"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/whisperf",
+      "size": 392,
+      "gitSha1": "f239e8a29b79ec17c77dead6ddb1920103ceeec3"
+    },
+    {
+      "path": "espeak-ng-data/voices/!v/zac",
+      "size": 275,
+      "gitSha1": "ca415a660b70d1eec84e6d37a5e89954de80ff88"
+    },
+    {
+      "path": "espeak-ng-data/yue_dict",
+      "size": 563571,
+      "gitSha1": "ed9cf0761c87b5de4e5ea8b5169d9a1b086a7ed7"
+    },
+    {
+      "path": "lexicon-gb-en.txt",
+      "size": 6366635,
+      "sha256": "c4cbb37316f62210dff52718a7afcaae24f50c032cc75ab47ae67b831d1049e7"
+    },
+    {
+      "path": "lexicon-us-en.txt",
+      "size": 5956885,
+      "sha256": "7daaab53a181be9885b853a8582bf1838186317e5dadacbcef9c426d6fa0da14"
+    },
+    {
+      "path": "lexicon-zh.txt",
+      "size": 2120131,
+      "sha256": "fea060803db3e59193987f1a3436f56917bda09f3b3595b6588e46ae60cebf93"
+    },
+    {
+      "path": "model.onnx",
+      "size": 325561476,
+      "sha256": "99db0bc8fd0c5033d249fe922db16768b71b4a6b26cfd93d206fbf66c76efb5f"
+    },
+    {
+      "path": "number-zh.fst",
+      "size": 64482,
+      "gitSha1": "66c0bd468903fc98d212cd6c3c5b2793ce8eb2c3"
+    },
+    {
+      "path": "phone-zh.fst",
+      "size": 88630,
+      "gitSha1": "2eba908c27ec0767281cad25d322008b16869c5b"
+    },
+    {
+      "path": "tokens.txt",
+      "size": 1111,
+      "gitSha1": "615ded432c9d405350bbbce619ee3548147f9713"
+    },
+    {
+      "path": "voices.bin",
+      "size": 53790720,
+      "sha256": "e64a5a581d8c2a350d848f51c3121657cd83aa07ed6109172177345874a7244c"
+    }
+  ]
+}

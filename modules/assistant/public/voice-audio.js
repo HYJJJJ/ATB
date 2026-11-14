@@ -48,3 +48,33 @@ export class SpeechCollector {
     this.reset(); return combined;
   }
 }
+
+
+// Lightweight, sustained near-end energy gate after browser echo cancellation.
+// Not a neural VAD: ASR still filters non-speech. Keep onset audio for the next turn.
+export class BargeInDetector {
+  constructor(options = {}) { this.configure(options); }
+  configure({ threshold = 10, durationMs = 500 } = {}) {
+    this.threshold = Math.max(2, Math.min(40, Number.isFinite(threshold) ? threshold : 10)) / 100;
+    this.requiredSamples = Math.max(200, Math.min(1500, Number.isFinite(durationMs) ? durationMs : 500)) * 16;
+    this.maxSamples = this.requiredSamples + 4800;
+    this.reset();
+  }
+  reset() { this.frames = []; this.samples = 0; this.voiced = 0; this.quiet = 0; }
+  push(pcm) {
+    let power = 0; for (const sample of pcm) power += (sample / 32768) ** 2;
+    const rms = Math.sqrt(power / Math.max(1, pcm.length));
+    this.frames.push(pcm); this.samples += pcm.length;
+    while (this.samples > this.maxSamples && this.frames.length > 1) this.samples -= this.frames.shift().length;
+    if (rms >= this.threshold) { this.voiced += pcm.length; this.quiet = 0; }
+    else {
+      this.quiet += pcm.length;
+      // A short syllable gap is normal speech; isolated impacts must not add up.
+      if (this.quiet >= 1600) this.voiced = 0;
+    }
+    if (this.voiced < this.requiredSamples) return null;
+    const onset = new Int16Array(this.samples); let offset = 0;
+    for (const chunk of this.frames) { onset.set(chunk, offset); offset += chunk.length; }
+    this.reset(); return onset;
+  }
+}

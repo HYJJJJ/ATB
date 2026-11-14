@@ -20,11 +20,46 @@ async function fixture(t, options = {}) {
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   const host = `127.0.0.1:${server.address().port}`;
   t.after(async () => { sockets.forEach(s => s.terminate()); await hub.close(); await new Promise(r => server.close(r)); });
-  return { hub, async connect(origin = `http://${host}`, token) {
-    const ws = new WebSocket(`ws://${host}/signal`, { origin, headers: token ? { Cookie: `${SESSION_COOKIE}=${token}` } : {} }); sockets.push(ws); await once(ws, 'open'); return ws;
+  return { hub, async connect(origin = `http://${host}`, token, recorderToken) {
+    const ws = new WebSocket(`ws://${host}/signal`, recorderToken ? ['atb-archive', recorderToken] : [], { origin, headers: token ? { Cookie: `${SESSION_COOKIE}=${token}` } : {} }); sockets.push(ws); await once(ws, 'open'); return ws;
   }, host };
 }
 async function request(ws, m, type, predicate) { const p = next(ws, type, predicate); ws.send(JSON.stringify(m)); return p; }
+
+test('private recorder can only catalog and receive media, cannot mutate devices, detect or talk back', async t => {
+  const accounts = new AccountStore(); await accounts.setup('a', '1'); const session = await accounts.login('a', '1');
+  const token = 'a'.repeat(64), { connect } = await fixture(t, { accounts, recorderToken: token });
+  const camera = await connect(), created = await request(camera, { type: 'create' }, 'created');
+  const catalog = await connect(undefined, undefined, token);
+  assert.equal((await request(catalog, { type: 'catalog' }, 'devices')).devices[0].online, true);
+  assert.equal((await request(catalog, { type: 'device-remark', deviceId: created.deviceId, remark: 'hack' }, 'error')).code, 'recorder-read-only');
+  const recorder = await connect(undefined, undefined, token);
+  assert.equal((await request(recorder, { type: 'watch', deviceId: created.deviceId }, 'detection-state')).source, false);
+  for (const type of ['create', 'join', 'detection-toggle', 'detection-frame', 'detection-provider-register', 'talkback-start']) {
+    assert.equal((await request(recorder, { type, enabled: true }, 'error')).code, 'recorder-read-only');
+  }
+  const invalid = await connect(undefined, undefined, 'b'.repeat(64));
+  assert.equal((await request(invalid, { type: 'catalog' }, 'error')).code, 'login-required');
+  const viewers = [];
+  for (let i = 0; i < 4; i++) { const viewer = await connect(undefined, session.token); await request(viewer, { type: 'watch', deviceId: created.deviceId }, 'joined'); viewers.push(viewer); }
+  assert.equal(viewers.length, 4, 'recorder does not consume normal viewer slots');
+});
+
+test('assistant background viewers never become person-detection frame sources or load that optional model', async t => {
+  const accounts = new AccountStore(); await accounts.setup('presence', 'test'); const session = await accounts.login('presence', 'test');
+  const detector = new EventEmitter(); let enables = 0;
+  detector.state = { status: 'off', available: true };
+  detector.enable = async () => { enables++; detector.state = { status: 'on', available: true }; detector.emit('state', detector.state); };
+  detector.disable = async () => {}; detector.close = async () => {};
+  const { connect } = await fixture(t, { accounts, detector, detectionPreference: { enabled: true, pending: Promise.resolve() } });
+  const camera = await connect(), created = await request(camera, { type: 'create' }, 'created');
+  const background = await connect(undefined, session.token);
+  const state = await request(background, { type: 'watch', deviceId: created.deviceId, detectionFrames: false }, 'detection-state');
+  assert.equal(state.source, false); assert.equal(enables, 0);
+  const viewer = await connect(undefined, session.token);
+  assert.equal((await request(viewer, { type: 'watch', deviceId: created.deviceId }, 'detection-state')).source, true);
+  assert.equal(enables, 1);
+});
 
 test('optional compute is unavailable offline; admin provider enables shared detection without changing camera presence', async t => {
   const accounts = new AccountStore(); await accounts.setup('compute', 'test'); const session = await accounts.login('compute', 'test');

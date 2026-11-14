@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="atb-contained-page">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0d1017"><title>ATB · All The Best</title>
@@ -7,13 +7,13 @@
 </head>
 <body>
 <a class="skip-link" href="#content">跳到主要内容</a>
-<div class="app">
-  <header class="platform-header">
+<div class="app atb-page-shell">
+  <header class="platform-header atb-shell-header">
     <a class="brand" href="/platform" aria-label="ATB 工作台"><span class="brand-word">ATB</span><small>ALL THE BEST</small></a>
     <nav class="platform-nav" aria-label="平台导航"><a href="#overview" data-page="overview" class="active">工作台</a><a href="#settings" data-page="settings">平台设置</a></nav>
     <div class="header-actions"><span class="account-dot" aria-hidden="true"></span><span id="user-label">访客</span></div>
   </header>
-  <main id="content" tabindex="-1">
+  <main id="content" class="atb-scroll-region" tabindex="-1" aria-label="工作台内容">
     <span id="page-label" class="sr-only">工作台</span>
     <div id="network-banner" role="status" class="banner" hidden>连接中断，正在自动重连。未保存的配置会保留。</div>
     <section id="login" class="card login" hidden>
@@ -26,16 +26,20 @@
         <div class="orbit-workspace">
           <div class="orbit-panel">
             <div class="orbit-stage" id="orbit-stage" role="group" aria-label="已安装模块，单击选择，双击进入">
-              <div class="starfield" aria-hidden="true"></div>
-              <div class="orbit-ring outer" aria-hidden="true"></div><div class="orbit-ring" aria-hidden="true"></div><div class="orbit-ring inner" aria-hidden="true"></div>
-              <div class="orbit-traveler planet-ice" aria-hidden="true"><i></i></div><div class="orbit-traveler planet-silver" aria-hidden="true"><i></i></div><div class="orbit-traveler planet-small" aria-hidden="true"><i></i></div>
-              <div class="orbit-core" aria-hidden="true"><strong>ATB</strong><small>ALL THE BEST</small><span id="orbit-count">— MODULES</span></div>
-              <div id="orbit-nodes"></div><span class="orbit-coordinate" aria-hidden="true">YOUR PERSONAL SPACE</span>
+              <div class="cosmos-nebula cosmic-animated" aria-hidden="true"></div>
+              <div class="starfield cosmic-animated" aria-hidden="true"></div>
+              <div class="orbital-plane" aria-hidden="true">
+                <div class="orbit-ring outer"></div><div class="orbit-ring"></div><div class="orbit-ring inner"></div>
+              </div>
+              <div class="orbit-core" aria-hidden="true"><div class="planet-surface"><svg class="earth-map" viewBox="0 0 240 240"><defs><clipPath id="earth-disc"><circle cx="120" cy="120" r="118"/></clipPath></defs><g clip-path="url(#earth-disc)"><path d="M6 61C18 51 19 39 31 39l7-8 10 2 5-8 15 3 10 7 11-1 7 9-10 6-3 10-9 2-2 9-7 3-3 13 5 6-5 6-10-3-5-8-8-4-3-14-12-2-5-10-9-1zM72 108l7 5 10 1 5 7 13 5 3 10-5 10 2 11-7 12-2 11-8 8-6 17-4-1-3-12 2-14-5-10-1-14-6-9 1-15-4-10zM116 43l9-8 9 2 7-5 12 1 3-7 18 2 8-4 21 9 11 1 8 8 20 4 3 17-13 12-3 13-9 1-8-9-9 3-8-6-6 8-7-1-2 10-9-1-5-12-7 1-3-10-10-4-7 5-6-7-8 4-4-4 7-9-4-6-9 2-4-6zM135 91l12-3 9 5 13 1 9 13-2 10 8 8-5 9-7 2-3 15-7 11-10 5-6-5-1-12-5-6-2-17-9-9-1-10zM182 156l4-2 2 10-4 12-3-4z"/><path class="earth-cloud" d="M-8 87Q51 39 100 66t152-7M-8 151q69-28 116 3t138-15M11 192q75-31 124 5"/></g></svg><i class="cosmic-animated"></i></div><span class="core-caption">HOME / EARTH</span></div>
+              <div id="orbit-nodes"></div>
+              <div class="orbit-legend"><span id="orbit-count">— MODULES</span><span class="orbit-coordinate" aria-hidden="true">YOUR PERSONAL ORBIT</span></div>
+              <button id="orbit-motion" class="orbit-motion" type="button" aria-label="暂停轨道动画" aria-pressed="false">暂停轨道 <span aria-hidden="true">Ⅱ</span></button>
             </div>
             <nav class="orbit-pagination" id="orbit-pagination" aria-label="切换模块组" hidden><button id="orbit-prev" type="button" aria-label="上一组模块">← 上一组</button><span id="orbit-page-status" role="status" aria-live="polite"></span><button id="orbit-next" type="button" aria-label="下一组模块">下一组 →</button></nav>
           </div>
           <section class="module-detail" id="module-detail" aria-labelledby="module-name">
-            <div class="module-copy" aria-live="polite" aria-atomic="true"><span class="eyebrow" id="module-kicker">YOUR MODULE</span><h2 id="module-name">选择一个模块</h2><p id="module-description">从轨道中选择需要的工具。</p><div class="module-tags"><span class="badge" id="module-version"></span><span class="badge">共享配置</span></div></div>
+            <div class="module-copy" aria-live="polite" aria-atomic="true"><span class="eyebrow" id="module-kicker">YOUR MODULE</span><h2 id="module-name">选择一个模块</h2><p id="module-description">从轨道中选择需要的工具。</p><div class="module-tags"><span class="badge" id="module-version"></span></div></div>
             <a class="primary enter-module" id="module-open" hidden>进入模块 <span aria-hidden="true">↗</span></a>
             <p class="interaction-hint"><span class="pointer-hint">单击选择 · 双击进入</span><span class="touch-hint">轻点选择，再点“进入模块”</span><span class="keyboard-hint">← → 切换 · Enter 进入</span></p>
             <div class="workspace-stats"><div><strong id="module-count">—</strong><small>已安装模块</small></div><div><strong id="service-kind">检测中</strong><small id="service-address"></small></div></div>
@@ -47,21 +51,31 @@
         <div class="page-title"><span class="eyebrow">PREFERENCES / 02</span><h1>平台设置</h1><p>通用配置集中管理，模块可继承或单独设置。</p></div>
         <div class="settings-tabs" role="tablist" aria-label="平台设置分类"><button type="button" role="tab" id="tab-general" data-settings-tab="general" aria-controls="settings-general" aria-selected="true">通用</button><button type="button" role="tab" id="tab-account" data-settings-tab="account" aria-controls="settings-account" aria-selected="false" tabindex="-1">账户</button><button type="button" role="tab" id="tab-ai" data-settings-tab="ai" aria-controls="settings-ai" aria-selected="false" tabindex="-1">AI 接口</button></div>
         <section id="settings-general" class="settings-panel" role="tabpanel" aria-labelledby="tab-general">
-          <form id="server-form" class="card settings"><div class="section-head"><h2>服务器</h2><span id="save-state" class="badge">已保存</span></div><div class="form-grid"><label>服务备注<input id="server-label" maxlength="80" placeholder="我的云端工作台"></label><label>服务器 IP 或域名<input id="server-host" maxlength="253" placeholder="example.com" autocomplete="off"></label></div><p class="muted">各模块读取此地址，使用各自的端口。当前访问地址：<span id="settings-address"></span></p><button class="primary" type="submit">保存设置</button><p id="settings-result" role="status"></p></form>
+          <div id="desktop-companion-settings"></div>
+          <details class="card atb-settings-section" open><summary><h2>服务器</h2><span id="save-state" class="badge">已保存</span></summary><form id="server-form" class="settings"><div class="form-grid"><label>服务备注<input id="server-label" maxlength="80" placeholder="我的云端工作台"></label><label>服务器 IP 或域名<input id="server-host" maxlength="253" placeholder="example.com" autocomplete="off"></label></div><p class="muted">各模块读取此地址，使用各自的端口。当前访问地址：<span id="settings-address"></span></p><button class="primary" type="submit">保存设置</button><p id="settings-result" role="status"></p></form></details>
           <details class="card installed"><summary>已安装模块 <span class="muted">安装与管理</span></summary><div id="module-list" class="module-list"></div><div id="module-errors" class="banner" hidden></div><p class="muted">模块的完整目录放入 modules 文件夹后重启平台即可安装，移出后重启即可移除。数据保留在平台数据目录中。</p></details>
         </section>
         <section id="settings-account" class="settings-panel" role="tabpanel" aria-labelledby="tab-account" hidden>
-          <form id="account-form" class="card settings"><div class="section-head"><h2>管理员账户</h2><span id="account-state" class="badge">当前账户</span></div><label>账号<input id="account-username" autocomplete="username"></label><div class="form-grid"><label>当前密码<input id="account-current" type="password" autocomplete="current-password"></label><label>新密码<input id="account-password" type="password" autocomplete="new-password" placeholder="留空保持原密码"></label></div><label class="check"><input id="account-change-password" type="checkbox">同时修改密码（允许空密码）</label><p class="muted">修改后当前设备保持登录，其他观看设备需要重新登录。摄像头设备的登记信息保留。</p><button class="primary" type="submit">更新账户</button><p id="account-result" role="status"></p></form>
+          <details class="card atb-settings-section" open><summary><h2>管理员账户</h2><span id="account-state" class="badge">当前账户</span></summary><form id="account-form" class="settings"><label>账号<input id="account-username" autocomplete="username"></label><div class="form-grid"><label>当前密码<input id="account-current" type="password" autocomplete="current-password"></label><label>新密码<input id="account-password" type="password" autocomplete="new-password" placeholder="留空保持原密码"></label></div><label class="check"><input id="account-change-password" type="checkbox">同时修改密码（允许空密码）</label><p class="muted">修改后当前设备保持登录，其他观看设备需要重新登录。摄像头设备的登记信息保留。</p><button class="primary" type="submit">更新账户</button><p id="account-result" role="status"></p></form></details>
         </section>
         <section id="settings-ai" class="settings-panel" role="tabpanel" aria-labelledby="tab-ai" hidden>
-          <form id="ai-form" class="card settings"><div class="section-head"><h2>默认 AI 接口</h2><span id="ai-state" class="badge">正在读取</span></div><p class="muted">支持官方和第三方兼容接口。模块默认使用这里的配置，也可在模块内单独设置。</p><div class="form-grid"><label>接口类型<select id="ai-provider"><option value="custom">自定义兼容接口</option><option value="openai">OpenAI 官方</option><option value="dashscope">阿里云百炼</option></select></label><label>调用协议<select id="ai-protocol"><option value="chat">Chat Completions</option><option value="responses">Responses</option></select></label></div><label>API 基础地址<input id="ai-base-url" type="url" placeholder="https://example.com/v1" autocomplete="off"></label><label>API 密钥 <span id="ai-key-state" class="field-state">未配置</span><input id="ai-api-key" type="password" autocomplete="off" placeholder="填写 API 密钥"></label><label class="check"><input id="ai-clear-key" type="checkbox">删除已保存的密钥</label><div class="model-field"><label>默认模型<input id="ai-model" maxlength="100" placeholder="选择模型或手动填写" list="ai-model-suggestions"></label><button id="ai-discover" class="secondary" type="button">获取并选择模型</button></div><datalist id="ai-model-suggestions"></datalist><div id="ai-selected-models" class="selected-models" aria-label="已选模型"></div><p class="muted">勾选的模型会显示在助手对话的模型切换菜单中。接口不支持列表时，可手动填写模型名。</p><div class="form-actions"><button class="primary" type="submit">保存默认接口</button><button class="secondary" id="ai-test" type="button">测试连接</button></div><p id="ai-result" role="status"></p></form>
+          <details class="card atb-settings-section" open><summary><h2>火山账户余额</h2><span id="billing-state" class="badge">正在读取</span></summary><form id="billing-form" class="settings">
+            <p class="muted">查询豆包语音所属火山主账号的可用余额。请使用同一主账号下、拥有 QueryBalanceAcct 查询权限的 AK/SK；与语音 API Key、AppID / Access Token 分开配置。</p>
+            <div class="form-grid"><label>Access Key ID<input id="billing-ak" type="password" maxlength="256" autocomplete="off" placeholder="填写账务 AK"></label><label>Secret Access Key<input id="billing-sk" type="password" maxlength="256" autocomplete="off" placeholder="填写账务 SK"></label></div>
+            <p id="billing-key-state" class="muted">未配置；留空不启用查询。</p>
+            <label class="check"><input id="billing-clear" type="checkbox">删除已保存的账务凭据</label>
+            <div class="form-actions"><button class="primary" type="submit">保存查询配置</button><button id="billing-query" class="secondary" type="button" disabled>查询余额</button></div>
+            <p id="billing-result" role="status"></p><p class="muted">按官方 AvailableBalance 原值显示，不换算为美元；不是资源包剩余字符数。凭据由本机平台统一保存，所有模块共用。</p>
+            <a class="text-link" href="https://docs.volcengine.com/docs/billing-center/query-balance-acct-query-user-account-balance-information?lang=zh" target="_blank" rel="noopener noreferrer">官方余额接口说明 ↗</a>
+          </form></details>
+          <details class="card atb-settings-section" open><summary><h2>默认 AI 接口</h2><span id="ai-state" class="badge">正在读取</span></summary><form id="ai-form" class="settings"><p class="muted">支持官方和第三方兼容接口。模块默认使用这里的配置，也可在模块内单独设置。</p><div class="form-grid"><label>接口类型<select id="ai-provider"><option value="custom">自定义兼容接口</option><option value="openai">OpenAI 官方</option><option value="dashscope">阿里云百炼</option><option value="deepseek">DeepSeek</option><option value="siliconflow">硅基流动</option><option value="volcengine">火山方舟</option></select></label><label>调用协议<select id="ai-protocol"><option value="chat">Chat Completions</option><option value="responses">Responses</option></select></label></div><label>API 基础地址<input id="ai-base-url" type="url" placeholder="https://example.com/v1" autocomplete="off"></label><label>API 密钥 <span id="ai-key-state" class="field-state">未配置</span><input id="ai-api-key" type="password" autocomplete="off" placeholder="填写 API 密钥"></label><label class="check"><input id="ai-clear-key" type="checkbox">删除已保存的密钥</label><div class="model-field"><label>默认模型<input id="ai-model" maxlength="100" placeholder="选择模型或手动填写" list="ai-model-suggestions"></label><button id="ai-discover" class="secondary" type="button">获取并选择模型</button></div><datalist id="ai-model-suggestions"></datalist><div id="ai-selected-models" class="selected-models" aria-label="已选模型"></div><p class="muted">勾选的模型会显示在助手对话的模型切换菜单中。接口不支持列表时，可手动填写模型名。</p><div class="form-actions"><button class="primary" type="submit">保存默认接口</button><button class="secondary" id="ai-test" type="button">测试连接</button></div><p id="ai-result" role="status"></p></form></details>
         </section>
       </section>
     </div>
     <div id="notice" role="status" aria-live="polite"></div>
   </main>
-  <footer class="platform-footer"><div class="service-state"><i class="connection-dot" aria-hidden="true"></i><span id="service-status" role="status">正在连接服务…</span><small id="service-host"></small></div><span>ALL THE BEST</span></footer>
+  <footer class="platform-footer"><div class="service-state"><i class="connection-dot" aria-hidden="true"></i><span id="service-status" role="status">正在连接服务…</span><small id="service-host"></small></div><span id="runtime-label">ALL THE BEST</span></footer>
 </div>
-<dialog id="ai-model-dialog" aria-labelledby="ai-model-dialog-title"><form method="dialog" class="model-dialog-head"><div><span class="eyebrow">AVAILABLE MODELS</span><h2 id="ai-model-dialog-title">选择可用模型</h2></div><button class="quiet" aria-label="关闭模型选择">✕</button></form><label class="sr-only" for="ai-model-search">搜索模型</label><input id="ai-model-search" placeholder="搜索模型名称" type="search"><p id="ai-model-count" class="muted" role="status"></p><div id="ai-model-options" class="model-options"></div><div class="dialog-actions"><button id="ai-model-select-all" class="quiet" type="button">全选搜索结果</button><button id="ai-model-apply" class="primary" type="button">使用所选模型</button></div></dialog>
+<dialog id="ai-model-dialog" aria-labelledby="ai-model-dialog-title"><form method="dialog" class="model-dialog-head"><div><span class="eyebrow">AVAILABLE MODELS</span><h2 id="ai-model-dialog-title">选择可用模型</h2></div><button class="quiet" aria-label="关闭模型选择">✕</button></form><label class="sr-only" for="ai-model-search">搜索模型</label><input id="ai-model-search" placeholder="搜索模型名称" type="search"><p id="ai-model-count" class="muted" role="status"></p><div id="ai-model-options" class="model-options" data-atb-scroll></div><div class="dialog-actions"><button id="ai-model-select-all" class="quiet" type="button">全选搜索结果</button><button id="ai-model-apply" class="primary" type="button">使用所选模型</button></div></dialog>
 </body>
 </html>

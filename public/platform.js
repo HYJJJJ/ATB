@@ -1,11 +1,69 @@
 import { navigateModule } from './ui.js';
+import { createAiProfileDrafts, fillAiProviderOptions, applyAiPresetControls } from './ai-presets.js';
 const $ = id => document.getElementById(id);
+if (window.atbDesktop?.runtimeInfo) void window.atbDesktop.runtimeInfo().then(info => {
+  $('runtime-label').textContent = `${info.preview ? '本机预览' : '本机应用'} · v${info.version}`;
+}).catch(() => {});
 let user, needsSetup = false, sessionTask, sessionTimer, noticeTimer, version = 0, installed = [], settingsLoaded = false;
 let background = [], selectedModule = null, orbitPage = 0;
 const ORBIT_PAGE_SIZE = 4;
+// One shared angular velocity keeps the small group separated throughout its orbit.
+// Random starting phase and restrained radial variation avoid a fixed compass layout.
+const orbitPhase = Math.random() * Math.PI * 2;
+const orbitJitter = Array.from({ length: ORBIT_PAGE_SIZE }, () => (Math.random() - .5) * .12);
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+let orbitFrame = 0, orbitTime = 0, orbitTick = 0, orbitHover = false, orbitFocus = false, orbitPaused = false;
+let orbitWidth = 0, orbitHeight = 0;
+function placeOrbitNodes() {
+  const nodes = [...$('orbit-nodes').children];
+  nodes.forEach((node, index) => {
+    const angle = orbitPhase + index * Math.PI * 2 / nodes.length + orbitJitter[index] + orbitTime * Math.PI * 2 / 160000;
+    const radius = 1 + orbitJitter[index] * .3;
+    const x = orbitWidth * (.36 * Math.cos(angle) + .035 * Math.sin(angle)) * radius;
+    const y = orbitHeight * (.30 * Math.sin(angle) - .07 * Math.cos(angle)) * radius;
+    node.style.transform = `translate(-50%, -50%) translate(${x.toFixed(2)}px, ${y.toFixed(2)}px)`;
+  });
+}
+function updateOrbitMotion() {
+  cancelAnimationFrame(orbitFrame); orbitTick = 0;
+  const active = !!user && installed.length > 0 && !document.hidden && document.documentElement.dataset.page === 'overview'
+    && !reducedMotion.matches && !orbitHover && !orbitFocus && !orbitPaused;
+  $('orbit-stage').dataset.running = String(active);
+  if (!active) return;
+  function tick(now) {
+    // Cap work at 30 fps, and discard time spent hidden or paused.
+    if (!orbitTick) orbitTick = now;
+    if (now - orbitTick >= 32) { orbitTime += Math.min(now - orbitTick, 100); orbitTick = now; placeOrbitNodes(); }
+    orbitFrame = requestAnimationFrame(tick);
+  }
+  orbitFrame = requestAnimationFrame(tick);
+}
+new ResizeObserver(entries => {
+  const { width, height } = entries[0].contentRect;
+  orbitWidth = width; orbitHeight = height; placeOrbitNodes();
+}).observe($('orbit-stage'));
+$('orbit-nodes').addEventListener('pointerover', event => { if (event.pointerType !== 'touch' && event.target.closest('.orbit-node')) { orbitHover = true; updateOrbitMotion(); } });
+$('orbit-nodes').addEventListener('pointerout', event => { if (!event.relatedTarget?.closest?.('.orbit-node')) { orbitHover = false; updateOrbitMotion(); } });
+$('orbit-stage').addEventListener('focusin', () => { orbitFocus = !!$('orbit-stage').querySelector(':focus-visible'); updateOrbitMotion(); });
+$('orbit-stage').addEventListener('focusout', event => { if (!$('orbit-stage').contains(event.relatedTarget)) { orbitFocus = false; updateOrbitMotion(); } });
+$('orbit-motion').addEventListener('click', () => {
+  orbitPaused = !orbitPaused;
+  $('orbit-motion').setAttribute('aria-pressed', String(orbitPaused));
+  $('orbit-motion').setAttribute('aria-label', orbitPaused ? '继续轨道动画' : '暂停轨道动画');
+  $('orbit-motion').innerHTML = orbitPaused ? '继续轨道 <span aria-hidden="true">▷</span>' : '暂停轨道 <span aria-hidden="true">Ⅱ</span>';
+  updateOrbitMotion();
+});
+reducedMotion.addEventListener('change', updateOrbitMotion);
+document.addEventListener('visibilitychange', updateOrbitMotion);
+window.addEventListener('pagehide', () => cancelAnimationFrame(orbitFrame));
 const labels = { overview: '工作台', settings: '平台设置' };
 const dirty = new Set();
+window.atbHasUnsavedChanges = () => Boolean(dirty.size);
+const aiProfiles = createAiProfileDrafts();
+fillAiProviderOptions($('ai-provider'));
+let aiProvider = 'custom';
 let aiConfig, selectedModels = [], availableModels = [], pendingSelection = new Set(), aiRevision = 0, aiTask, accountRevision = 0;
+let billingConfig = {}, billingRevision = 0, billingQueryVersion = 0;
 const aiFields = ['ai-provider','ai-protocol','ai-base-url','ai-api-key','ai-clear-key','ai-model'];
 async function api(url, data, signal = AbortSignal.timeout(8000)) {
   const response = await fetch(url, { signal, ...(data === undefined ? {} : { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) }) });
@@ -20,9 +78,13 @@ function show() {
   document.querySelectorAll('.page').forEach(element => element.hidden = element.id !== `page-${page}`);
   document.querySelectorAll('[data-page]').forEach(element => { element.classList.toggle('active', element.dataset.page === page); if (element.dataset.page === page) element.setAttribute('aria-current','page'); else element.removeAttribute('aria-current'); });
   $('page-label').textContent = labels[page]; document.documentElement.dataset.page = page;
+  updateOrbitMotion();
   if (page === 'settings' && ['general','account','ai'].includes(tab)) settingsTab(tab);
 }
-function connection(online) { $('service-status').textContent = online ? '平台服务已连接' : '连接中断 · 重试中'; $('network-banner').hidden = online; document.documentElement.dataset.online = String(online); }
+let connectionFailures = 0;
+function connection(online) {
+  connectionFailures = online ? 0 : connectionFailures + 1;
+  document.documentElement.dataset.connection = online ? 'connected' : connectionFailures < 3 ? 'retrying' : 'offline'; $('service-status').textContent = online ? '平台服务已连接' : '连接中断 · 重试中'; $('network-banner').hidden = online; document.documentElement.dataset.online = String(online); }
 function textElement(tag, className, value) { const element = document.createElement(tag); if (className) element.className = className; element.textContent = value; return element; }
 function moduleSymbol(module, className = 'module-icon') {
   const symbols = {
@@ -53,6 +115,7 @@ function selectModule(id, focus = false) {
   $('module-open').href = module.entry; $('module-open').hidden = false;
 }
 function renderOrbitPage() {
+  orbitHover = false; orbitFocus = false;
   const start = orbitPage * ORBIT_PAGE_SIZE, modules = installed.slice(start, start + ORBIT_PAGE_SIZE);
   $('orbit-pagination').hidden = installed.length <= ORBIT_PAGE_SIZE;
   $('orbit-page-status').textContent = (orbitPage + 1) + ' / ' + Math.max(1, Math.ceil(installed.length / ORBIT_PAGE_SIZE));
@@ -60,11 +123,8 @@ function renderOrbitPage() {
   $('orbit-next').disabled = start + ORBIT_PAGE_SIZE >= installed.length;
   $('orbit-nodes').replaceChildren(...modules.map((module, pageIndex) => {
     const index = start + pageIndex;
-    const node = document.createElement('button'); node.type = 'button'; node.className = 'orbit-node'; node.dataset.moduleId = module.id;
+    const node = document.createElement('button'); node.type = 'button'; node.className = 'orbit-node'; node.dataset.moduleId = module.id; node.dataset.planet = String(index % 4);
     node.setAttribute('aria-label', '选择' + module.name); node.setAttribute('aria-pressed', 'false'); node.title = module.name;
-    const angle = -Math.PI / 2 + pageIndex * 2 * Math.PI / modules.length;
-    node.style.setProperty('--node-x', (50 + 34 * Math.cos(angle)).toFixed(3) + '%');
-    node.style.setProperty('--node-y', (50 + 34 * Math.sin(angle)).toFixed(3) + '%');
     const caption = document.createElement('span'); caption.className = 'node-caption';
     caption.append(textElement('strong', '', module.name), textElement('small', '', 'MODULE / ' + String(index + 1).padStart(2, '0')));
     node.append(moduleSymbol(module, 'node-symbol'), caption);
@@ -81,6 +141,7 @@ function renderOrbitPage() {
     });
     return node;
   }));
+  placeOrbitNodes(); updateOrbitMotion();
 }
 function renderModules(modules, errors) {
   installed = modules; $('module-count').textContent = String(modules.length); $('empty-modules').hidden = modules.length > 0;
@@ -102,13 +163,20 @@ $('orbit-next').addEventListener('click', () => { const module = installed[(orbi
 async function stopBackground() { const old=background; background=[]; await Promise.allSettled(old.map(item=>item.close?.())); }
 async function startBackground(config, generation) {
   await stopBackground();
+  if((config.modules||[]).some(module=>module.id==='assistant')&&window.atbDesktop?.hasModule('assistant'))try{
+    const {mountCompanionSettings}=await import('/modules/assistant/companion-settings-panel.js');
+    if(generation!==version||!user)return;
+    const handle=await mountCompanionSettings({container:$('desktop-companion-settings'),api,onDirty:value=>value?dirty.add('companion'):dirty.delete('companion')});
+    if(generation!==version||!user)handle?.close();else if(handle)background.push(handle);
+  }catch{}
   for (const module of config.modules || []) if (module.background) {
     try { const provider = await import(module.background); if (generation !== version || !user) return; const handle = await provider.activate?.({config,api}); if (generation !== version || !user) await handle?.close?.(); else if(handle) background.push(handle); } catch {}
   }
 }
 function signedOut(message='') {
   version++; user=null; settingsLoaded=false; void stopBackground();
-  aiTask?.abort(); $('ai-model-dialog').close();
+  aiTask?.abort(); aiProfiles.clear(); $('ai-model-dialog').close();
+  billingQueryVersion++; fillBilling({}); $('billing-result').textContent = '';
   renderModules([], []);
   $('login').hidden=false; $('workspace').hidden=true; $('user-label').textContent='访客'; $('login-error').textContent=message;
   $('server-label').value=''; $('server-host').value=''; fillAi({}); availableModels=[]; pendingSelection.clear(); $('ai-model-options').replaceChildren(); $('ai-model-suggestions').replaceChildren(); $('account-form').reset(); document.documentElement.dataset.authenticated='false'; dirty.clear();
@@ -128,6 +196,7 @@ async function refreshSession() {
         if(generation!==version||!user)return;
         renderModules(catalog.modules,catalog.errors); if(!dirty.has('server')){$('server-label').value=settings.server.label;$('server-host').value=settings.server.publicHost;}
         if(!dirty.has('ai')) fillAi(ai); if(!dirty.has('account')) $('account-username').value=user.username; $('settings-address').textContent=location.origin;
+        if (!dirty.has('billing')) fillBilling(settings.billing?.volcengine || {});
         $('service-kind').textContent=config.publicOrigin?'云端服务':'本机服务';$('service-address').textContent=location.host;settingsLoaded=true;
         void startBackground(config,generation);
       }
@@ -150,6 +219,42 @@ function settingsTab(name, focus=false) {
     $(tab.getAttribute('aria-controls')).hidden=!active;if(active&&focus)tab.focus();
   }
 }
+function fillBilling(value) {
+  billingConfig = value;
+  $('billing-ak').value = ''; $('billing-sk').value = ''; $('billing-clear').checked = false;
+  $('billing-state').textContent = value.configured ? '已配置' : '未配置';
+  $('billing-key-state').textContent = value.configured ? 'AK/SK 已保存，留空保持不变；更换时同时填写。' : '未配置；留空不启用查询。';
+  $('billing-query').disabled = !value.configured;
+}
+for (const id of ['billing-ak', 'billing-sk', 'billing-clear']) $(id).addEventListener('input', () => {
+  billingRevision++; billingQueryVersion++; dirty.add('billing');
+  $('billing-state').textContent = '未保存'; $('billing-result').textContent = '';
+  $('billing-query').disabled = true;
+  $('billing-key-state').textContent = $('billing-clear').checked ? '保存后删除 AK/SK，停止账户余额查询。' : '请保存后查询；更换时同时填写 AK 和 SK。';
+});
+$('billing-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const button = event.currentTarget.querySelector('[type=submit]'), revision = billingRevision, generation = version;
+  button.disabled = true; billingQueryVersion++;
+  try {
+    const result = await api('/api/platform/billing/volcengine', { accessKeyId: $('billing-ak').value, secretAccessKey: $('billing-sk').value, clearCredentials: $('billing-clear').checked });
+    if (generation !== version || !user) return;
+    billingConfig = result;
+    if (revision === billingRevision) { dirty.delete('billing'); fillBilling(result); }
+    $('billing-result').textContent = revision === billingRevision ? '余额查询配置已保存' : '已保存上次提交，当前修改尚未保存';
+  } catch (error) { if (generation === version && user) $('billing-result').textContent = error.message; }
+  finally { button.disabled = false; }
+});
+$('billing-query').addEventListener('click', async () => {
+  const generation = version, queryVersion = ++billingQueryVersion;
+  $('billing-query').disabled = true; $('billing-result').textContent = '正在查询火山账户…';
+  try {
+    const result = await api('/api/platform/billing/volcengine/balance?refresh=1');
+    if (generation !== version || queryVersion !== billingQueryVersion || !user) return;
+    $('billing-result').textContent = result.kind === 'balance' ? `可用余额 ${result.available}${result.cash !== undefined ? ' · 现金余额 ' + result.cash : ''}（官方接口原值）` : result.kind === 'unconfigured' ? '请先保存账务 AK/SK' : '查询失败，请检查账务 AK/SK、账户查询权限和网络';
+  } catch (error) { if (generation === version && queryVersion === billingQueryVersion && user) $('billing-result').textContent = error.message; }
+  finally { if (generation === version && queryVersion === billingQueryVersion) $('billing-query').disabled = !billingConfig.configured || dirty.has('billing'); }
+});
 for (const tab of document.querySelectorAll('[data-settings-tab]')) {
   tab.addEventListener('click',()=>settingsTab(tab.dataset.settingsTab));
   tab.addEventListener('keydown',event=>{
@@ -158,8 +263,8 @@ for (const tab of document.querySelectorAll('[data-settings-tab]')) {
   });
 }
 function aiKeyState() {
-  const changed=$('ai-base-url').value.replace(/\/+$/,'')!==aiConfig?.baseUrl?.replace(/\/+$/,'');
-  const retained=!!aiConfig?.hasApiKey&&!changed&&!$('ai-clear-key').checked;
+  const changed=$('ai-base-url').value.replace(/\/+$/,'')!==aiProfiles.saved($('ai-provider').value)?.baseUrl?.replace(/\/+$/,'');
+  const retained=!!aiProfiles.saved($('ai-provider').value)?.hasApiKey&&!changed&&!$('ai-clear-key').checked;
   $('ai-key-state').dataset.configured=String(retained);
   $('ai-key-state').textContent=$('ai-api-key').value?'新密钥待保存':retained?'已配置 · 留空保持不变':$('ai-clear-key').checked?'保存后删除密钥':changed?'地址已更换，请填写对应密钥':'未配置';
   $('ai-api-key').placeholder=retained?'已安全保存，无需重复填写':'填写 API 密钥';
@@ -170,29 +275,32 @@ function renderSelectedModels() {
     remove.addEventListener('click',()=>{selectedModels=selectedModels.filter(item=>item!==model);if($('ai-model').value===model)$('ai-model').value=selectedModels[0]||'';markAi();renderSelectedModels();});chip.append(remove);return chip;
   }));
 }
-function fillAi(value) {
+function fillAi(value, resetProfiles = true) {
   aiConfig=value;
+  if (resetProfiles) aiProfiles.reset(value);
+  aiProvider = value.provider || 'custom';
   $('ai-provider').value=value.provider||'custom';$('ai-protocol').value=value.protocol||'chat';$('ai-base-url').value=value.baseUrl||'';
-  $('ai-api-key').value='';$('ai-clear-key').checked=false;$('ai-model').value=value.model||'';
+  $('ai-api-key').value=value.apiKey||'';$('ai-clear-key').checked=!!value.clearKey;$('ai-model').value=value.model||'';
   selectedModels=[...new Set([...(value.selectedModels||[]),value.model].filter(Boolean))];
-  $('ai-state').textContent=value.hasApiKey?'已配置':'未配置';$('ai-base-url').readOnly=value.provider!=='custom';aiKeyState();renderSelectedModels();
+  $('ai-state').textContent=value.hasApiKey?'已配置':'未配置';applyAiPresetControls(aiProvider,$('ai-base-url'),$('ai-protocol'));aiKeyState();renderSelectedModels();
 }
-function markAi() { aiRevision++;dirty.add('ai');$('ai-state').textContent='未保存';$('ai-result').textContent='';aiKeyState(); }
+function markAi() { aiProfiles.remember(aiDraft());aiRevision++;dirty.add('ai');$('ai-state').textContent='未保存';$('ai-result').textContent='';aiKeyState(); }
 function aiDraft() {
   return {provider:$('ai-provider').value,protocol:$('ai-protocol').value,baseUrl:$('ai-base-url').value,apiKey:$('ai-api-key').value,clearKey:$('ai-clear-key').checked,model:$('ai-model').value.trim(),selectedModels:[...new Set([...selectedModels,$('ai-model').value.trim()].filter(Boolean))]};
 }
 for(const id of aiFields)$(id).addEventListener('input',()=>{
   if(id==='ai-provider'){
-    const bases={openai:'https://api.openai.com/v1',dashscope:'https://dashscope.aliyuncs.com/compatible-mode/v1'};
-    $('ai-base-url').readOnly=$('ai-provider').value!=='custom';
-    if(bases[$('ai-provider').value])$('ai-base-url').value=bases[$('ai-provider').value];
+    const provider = $('ai-provider').value;
+    aiProfiles.remember({ ...aiDraft(), provider: aiProvider });
+    fillAi(aiProfiles.get(provider), false);
+    availableModels=[]; pendingSelection.clear(); $('ai-model-options').replaceChildren(); $('ai-model-suggestions').replaceChildren();
   }
-  if(['ai-provider','ai-base-url'].includes(id)){availableModels=[];selectedModels=[];renderSelectedModels();}
+  if(id==='ai-base-url'){availableModels=[];selectedModels=[];renderSelectedModels();}
   markAi();
 });
 $('ai-form').addEventListener('submit',async event=>{
   event.preventDefault();const button=event.currentTarget.querySelector('[type=submit]'),revision=aiRevision,generation=version;button.disabled=true;
-  try{const value=await api('/api/platform/ai',aiDraft());if(generation!==version||!user)return;aiConfig=value;if(revision===aiRevision){dirty.delete('ai');fillAi(value);}$('ai-result').textContent=revision===aiRevision?'默认接口已保存，继承平台配置的模块会自动使用。':'已保存提交的配置，当前新修改尚未保存。';}
+  try{const value=await api('/api/platform/ai',aiDraft());if(generation!==version||!user)return;aiConfig=value;if(revision===aiRevision){aiProfiles.accept(value);if(!aiProfiles.hasDrafts())dirty.delete('ai');fillAi(value,false);}$('ai-result').textContent=revision===aiRevision?'默认接口已保存，继承平台配置的模块会自动使用。':'已保存提交的配置，当前新修改尚未保存。';}
   catch(error){$('ai-result').textContent=error.message;}finally{button.disabled=false;}
 });
 function renderModelOptions() {

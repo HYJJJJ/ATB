@@ -9,6 +9,8 @@ const files = new Map([
   ['/platform.css', ['platform.css', 'text/css; charset=utf-8']],
   ['/ui.css', ['ui.css', 'text/css; charset=utf-8']],
   ['/ui.js', ['ui.js', 'text/javascript; charset=utf-8']],
+  ['/model-content.js', ['model-content.js', 'text/javascript; charset=utf-8']],
+  ['/ai-presets.js', ['ai-presets.js', 'text/javascript; charset=utf-8']],
   ['/setup', ['setup.html', 'text/html; charset=utf-8']],
 ]);
 const emptyModules = { list: () => [], config: {}, asset() {}, async handle() { return false; } };

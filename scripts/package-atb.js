@@ -12,9 +12,9 @@ export function runtimePackage(pkg) {
   return JSON.parse(JSON.stringify({ name: pkg.name, version: pkg.version, private: true, type: 'module', main: pkg.main, description: pkg.description, author: pkg.author, engines: pkg.engines, dependencies: pkg.dependencies }));
 }
 const require = createRequire(import.meta.url);
-const platformDesktop = ['main.cjs', 'preload.cjs', 'module-host.cjs', 'service.cjs', 'trust.cjs', 'connect.html', 'connect.js', 'connect.css'];
+const platformDesktop = ['main.cjs', 'preload.cjs', 'module-host.cjs', 'service.cjs', 'trust.cjs', 'ui-source.cjs', 'tray.cjs', 'tray.png', 'connect.html', 'connect.js', 'connect.css'];
 const runtimeExtension = /\.(?:[cm]?js|html|css|svg|png|jpg|py)$/i;
-const forbiddenPart = /^(?:data|certs|private|desktop-profile|voice-runtime|\.venv|venv|__pycache__|test-results|exports|\.git)$/i;
+const forbiddenPart = /^(?:data|certs|private|desktop-profile|voice-runtime|tts-runtime|qwen-tts-runtime|\.venv|venv|__pycache__|test-results|exports|\.git)$/i;
 
 export async function sha256(filename) {
   const hash = createHash('sha256');
@@ -33,7 +33,8 @@ export async function fileList(directory, prefix = '') {
 }
 export function assertRuntimePath(relative, variant) {
   const parts = relative.replaceAll('\\', '/').split('/');
-  if (parts.some(part => forbiddenPart.test(part)) || /\.(?:log|pem|key|crt|cer|pfx|p12|dpapi|sqlite|db)$/i.test(relative) || /(?:^|\/)\.env(?:\.|$)/i.test(relative)) throw Error(`Private runtime file rejected: ${relative}`);
+  const firstParty=parts.includes('node_modules')?parts.slice(0,parts.indexOf('node_modules')):parts;
+  if (firstParty.some(part => forbiddenPart.test(part)) || /\.(?:log|pem|key|crt|cer|pfx|p12|dpapi|sqlite|db)$/i.test(relative) || /(?:^|\/)\.env(?:\.|$)/i.test(relative)) throw Error(`Private runtime file rejected: ${relative}`);
   if (variant === 'core' && (parts.includes('modules') || parts.includes('models') || /onnx|sharp|qrcode|turn-server|(?:^|\/)ws\//i.test(relative))) throw Error(`Module file in core: ${relative}`);
   if (variant === 'core' && parts[0] === 'node_modules' && parts[1] !== 'node-forge') throw Error(`Non-platform dependency in core: ${relative}`);
 }
@@ -42,7 +43,7 @@ async function copyRuntimeTree(source, destination) {
     const relative = path.relative(source, filename);
     if (!relative) return true;
     if (relative.split(path.sep).some(part => forbiddenPart.test(part) || ['node_modules', 'test', 'tests'].includes(part))) return false;
-    return (await stat(filename)).isDirectory() || runtimeExtension.test(filename);
+    return (await stat(filename)).isDirectory() || runtimeExtension.test(filename) || filename.replaceAll('\\','/').endsWith('/modules/assistant/desktop/windows-automation.ps1');
   } });
 }
 async function copyOptional(source, target, options = {}) {
@@ -81,6 +82,7 @@ async function copyDependencies(dependencies, destination, sourceRoot = root) {
     } });
     for (const dependency of Object.keys(manifest.dependencies || {})) await install(dependency, source);
     for (const dependency of Object.keys(manifest.optionalDependencies || {})) await install(dependency, source, true);
+    for (const dependency of Object.keys(manifest.peerDependencies || {})) await install(dependency, source, manifest.peerDependenciesMeta?.[dependency]?.optional===true);
   }
   for (const dependency of Object.keys(dependencies)) await install(dependency, sourceRoot);
   return Object.fromEntries([...installed.values()].map(({ name, version }) => [name, version]));
@@ -130,9 +132,14 @@ export async function stageVariant(variant, { stageRoot = path.join(root, 'test-
         dependencies[id] = await copyDependencies(modulePackage.dependencies || {}, target, source);
       } catch (error) { if (error.code !== 'ENOENT') throw error; }
       if (id === 'assistant') {
-        await mkdir(path.join(target, 'scripts')); await copyFile(path.join(source, 'scripts/setup-assistant-voice.py'), path.join(target, 'scripts/setup-assistant-voice.py'));
+        await copyOptional(path.join(source, 'public/vision'), path.join(target, 'public/vision'), { recursive: true });
+        await mkdir(path.join(target, 'scripts'));
+        for (const filename of ['scripts/setup-assistant-voice.py', 'scripts/setup-local-tts.py', 'scripts/download-local-tts.js', 'scripts/import-chattts-speakers.py', 'assistant/chattts-speakers.json', 'assistant/chattts-speakers.f32', 'assistant/local-tts-manifest.json', 'assistant/qwen-tts-capabilities.json', 'server/volcengine-voices.json']) {
+          await copyFile(path.join(source, filename), path.join(target, filename));
+        }
         await cp(path.join(source, 'docs/licenses'), path.join(target, 'docs/licenses'), { recursive: true });
         await copyOptional(path.join(source, 'docs/THIRD-PARTY-VOICE.md'), path.join(target, 'docs/THIRD-PARTY-VOICE.md'));
+        await copyFile(path.join(source, 'docs/LOCAL-TTS-LICENSES.md'), path.join(target, 'docs/LOCAL-TTS-LICENSES.md'));
       }
       if (id === 'freecamera') {
         await mkdir(path.join(target, 'models'));

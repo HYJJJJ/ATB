@@ -2,7 +2,8 @@ import { sessionToken } from '../../../server/accounts.js';
 
 export function createVoiceRoutes({ accounts, runtime }) {
   const prefix = '/api/assistant/voice/';
-  const actions = new Set(['status', 'settings', 'open', 'heartbeat', 'transcribe', 'speak', 'close']);
+  const streamActions = ['ttsStart', 'ttsText', 'ttsFinish', 'ttsRead'];
+  const actions = new Set(['status', 'settings', 'catalog', 'open', 'heartbeat', 'transcribe', 'speak', 'close', ...streamActions]);
   const revoked = owner => { void runtime.close(owner); };
   accounts.on?.('revoked', revoked);
   const routes = async (req, res, pathname) => {
@@ -31,15 +32,15 @@ export function createVoiceRoutes({ accounts, runtime }) {
       let body;
       try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { reply(400, { error: '请求格式无效' }); return true; }
       if (!body || typeof body !== 'object' || Array.isArray(body)) { reply(400, { error: '请求格式无效' }); return true; }
-      if (['close', 'heartbeat', 'transcribe', 'speak'].includes(action) && (typeof body.leaseId !== 'string' || !body.leaseId)) { reply(400, { error: '语音连接无效' }); return true; }
+      if (['close', 'heartbeat', 'transcribe', 'speak', ...streamActions].includes(action) && (typeof body.leaseId !== 'string' || !body.leaseId)) { reply(400, { error: '语音连接无效' }); return true; }
       let requestLease = body.leaseId;
-      if (['open', 'transcribe', 'speak'].includes(action)) {
-        onClose = () => { if (!res.writableEnded && requestLease) void runtime.close(owner, requestLease); };
+      if (['open', 'transcribe', 'speak', ...streamActions].includes(action)) {
+        onClose = () => { if (!res.writableEnded && requestLease) void runtime.close(owner, requestLease, { keepWarm: true }); };
         res.once('close', onClose);
       }
-      const result = action === 'settings' ? await runtime.configure(body) : action === 'open' ? await runtime.open(owner, body) : action === 'close' ? await runtime.close(owner, body.leaseId) : await runtime[action](owner, body);
+      const result = action === 'catalog' ? await runtime.catalog({ refresh: body.refresh === true, provider: body.provider }) : action === 'settings' ? await runtime.configure(body) : action === 'open' ? await runtime.open(owner, body) : action === 'close' ? await runtime.close(owner, body.leaseId, { keepWarm: body.keepWarm === true }) : await runtime[action](owner, body);
       if (action === 'open') requestLease = result.leaseId;
-      if (res.destroyed) { if (requestLease) await runtime.close(owner, requestLease); return true; }
+      if (res.destroyed) { if (requestLease) await runtime.close(owner, requestLease, { keepWarm: true }); return true; }
       if (!accounts.session(token)) { await runtime.close(owner); reply(401, { error: '登录已过期' }); return true; }
       reply(200, result || { ok: true });
     } catch (error) { reply(400, { error: error.message || '语音操作失败，请重试' }); }

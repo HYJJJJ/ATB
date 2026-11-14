@@ -31,6 +31,26 @@ export async function safeRequest(url, options = {}, { lookup = dns.lookup, tran
       method: options.method || 'GET', headers: options.headers, timeout: 20000, signal, agent: false,
       lookup: (_host, opts, callback) => opts?.all ? callback(null, [chosen]) : callback(null, chosen.address, 4),
     }, res => {
+      if (options.stream) {
+        // No data listener: retain backpressure until the caller reads the body.
+        res.on('error', () => {});
+        const body = (async function* () {
+          let bytes = 0;
+          try {
+            for await (const chunk of res) {
+              signal.throwIfAborted(); bytes += chunk.length;
+              if (bytes > 2 * 1024 * 1024) throw Error('响应过大');
+              yield chunk;
+            }
+            signal.throwIfAborted();
+          } finally { if (!res.readableEnded) req.destroy(); }
+        })();
+        resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode,
+          headers: new Headers(res.headers), body, cancel: () => req.destroy(),
+          json: async () => { const chunks = []; for await (const chunk of body) chunks.push(chunk); return JSON.parse(Buffer.concat(chunks).toString('utf8')); },
+        });
+        return;
+      }
       let bytes = 0; const chunks = [];
       res.on('data', chunk => {
         bytes += chunk.length;

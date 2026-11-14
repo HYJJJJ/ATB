@@ -1,6 +1,6 @@
 {
   "name": "atb",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -15,6 +15,7 @@
     "desktop": "electron .",
     "setup:model": "node modules/freecamera/scripts/setup-model.js",
     "test:desktop": "node modules/freecamera/scripts/test-desktop.js",
+    "test:desktop-ui": "node scripts/test-local-desktop-ui.js",
     "package:desktop": "node scripts/package-atb.js all",
     "test:features": "node modules/freecamera/scripts/test-features.js",
     "test:audio": "node modules/freecamera/scripts/test-audio.js",

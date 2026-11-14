@@ -63,5 +63,28 @@ test('module page renders authenticated shared settings, exports configuration a
   assert.equal(settings.rustdesk.deployedVersion, '1.1.16');
   const unauthenticated = await browser.newPage(); await unauthenticated.goto(url); await unauthenticated.locator('#login-state').waitFor({ state: 'visible' });
   assert.equal(await unauthenticated.locator('#id-server').inputValue(), '');
+  const nativePage = await browser.newPage({ extraHTTPHeaders: { Cookie: `${SESSION_COOKIE}=browser-test` } });
+  await nativePage.addInitScript(() => {
+    window.atbDesktop = { isDesktop: true, invokeModule: async (_module, action) => {
+      if (action === 'status') return { installed: true };
+      return new Promise(resolve => { window.finishRustDeskLaunch = resolve; });
+    } };
+  });
+  await nativePage.goto(url);
+  await nativePage.waitForFunction(() => !document.getElementById('open-client').disabled);
+  const openButton = nativePage.locator('#open-client'), originalLabel = await openButton.textContent();
+  await openButton.click();
+  assert.equal(await openButton.isDisabled(), true);
+  assert.equal(await openButton.textContent(), '正在启动…');
+  assert.match(await nativePage.locator('#notice').textContent(), /正在准备 RustDesk 本机服务/);
+  await nativePage.evaluate(() => window.finishRustDeskLaunch({ launched: false, error: 'RustDesk 本机服务未获授权' }));
+  await nativePage.waitForFunction(() => !document.getElementById('open-client').disabled);
+  assert.match(await nativePage.locator('#notice').textContent(), /未获授权/);
+  assert.equal(await openButton.textContent(), originalLabel);
+  await openButton.click();
+  await nativePage.evaluate(() => window.finishRustDeskLaunch({ launched: true, installed: true }));
+  await nativePage.waitForFunction(() => !document.getElementById('open-client').disabled);
+  assert.match(await nativePage.locator('#notice').textContent(), /已启动 RustDesk/);
+  assert.equal(await openButton.textContent(), originalLabel);
   assert.deepEqual(errors, []);
 });

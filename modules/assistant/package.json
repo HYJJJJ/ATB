@@ -1,11 +1,20 @@
 {
   "name": "@atb/assistant",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "description": "ATB assistant, model connection, and local speech module",
   "engines": {
     "node": ">=22"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-sdk-client": "0.2.2-rc.1",
+    "@modelcontextprotocol/sdk": "1.26.0",
+    "@playwright/mcp": "0.0.85",
+    "linkedom": "0.18.12",
+    "node": "24.22.3",
+    "npm": "11.14.1",
+    "ws": "^8.18.0"
   },
   "scripts": {
     "test": "node --test test/*.test.js"

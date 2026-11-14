@@ -18,7 +18,7 @@ function desktopEntry(directory, entry) {
 // Installed modules are trusted local code. Validation confines discovery to their
 // own directories; it is not a sandbox for arbitrary third-party JavaScript.
 function loadDesktopModules({ modulesRoot, context, onError = () => {} }) {
-  const instances = new Map(), suspensions = new Set();
+  const instances = new Map(), suspensions = new Set(), remoteUi = [];
   let closed = false, closing;
   const report = (id, phase) => { try { onError({ id: validId(id) ? id : '(invalid)', phase }); } catch {} };
   let entries = [], root;
@@ -46,6 +46,11 @@ function loadDesktopModules({ modulesRoot, context, onError = () => {} }) {
           || (instance.suspend !== undefined && typeof instance.suspend !== 'function')
           || (instance.close !== undefined && typeof instance.close !== 'function')
           || Object.entries(instance.handlers).some(([action, handler]) => !validAction(action) || typeof handler !== 'function')) throw Error('Invalid desktop module');
+      if (manifest.desktopRemote && manifest.entry?.startsWith(`/modules/${manifest.id}/`)) {
+        const assets = Object.keys(manifest.assets || {}).filter(url => url.startsWith('/') && !url.startsWith('/api/') && !url.includes('?') && !url.includes('#') && new URL(url, 'https://localhost').pathname === url);
+        if (assets.includes(manifest.entry)) remoteUi.push({ id: manifest.id, entry: manifest.entry,
+          assets, pages: assets.filter(url => manifest.assets[url] === manifest.assets[manifest.entry]), legacyViewer: manifest.desktopRemote.legacyViewer === true });
+      }
       instances.set(manifest.id, instance);
     } catch {
       report(entry.name, phase);
@@ -55,6 +60,7 @@ function loadDesktopModules({ modulesRoot, context, onError = () => {} }) {
   }
   return {
     ids: Object.freeze([...instances.keys()]),
+    remoteUi: Object.freeze(remoteUi),
     hasModule(id) { return !closed && validId(id) && instances.has(id); },
     async invoke(id, action, owner, options = {}) {
       if (closed) throw Error('Desktop modules are closed');

@@ -14,7 +14,7 @@ ATB_SERVICE=freecamera.service \
 bash modules/rustdesk/deploy/install.sh
 ```
 
-实例内部使用 TCP21115（NAT测试）、TCP+UDP21116（ID）、TCP21117（中继）。公网映射另行配置，ID 公网端口与中继端口可显式填写；标准客户端 NAT 测试固定访问 ID 公网端口减1，非连续映射会影响此项。默认 `ALWAYS_USE_RELAY=Y`，保证以中继为优先的接入；实际流量会通过服务器。
+实例内部使用 TCP21115（NAT测试）、TCP+UDP21116（ID）、TCP21117（中继）。公网映射另行配置，ID 公网端口与中继端口可显式填写；标准客户端 NAT 测试固定访问 ID 公网端口减1，非连续映射会影响此项。默认 `ALWAYS_USE_RELAY=N`，允许客户端尝试直连，失败后仍可使用已配置的中继；是否能直连取决于两端网络与实际会话。重新执行安装脚本会写入此默认值，已有自定义环境应先备份并核对；不要为切换连接策略重跑整个安装脚本。
 
 程序归 `/opt/atb-modules/rustdesk/1.1.16`；专用用户 `atb-rustdesk`，私钥/注册数据库仅在 `/var/lib/atb-rustdesk`。两个服务均使用 `-k _` 强制匹配生成的公开 Key。安装后仅读取 `id_ed25519.pub` 写入平台 `SharedSettings.server.rustdesk`；禁止读取或发布私钥。实例服务环境是部署时生成的公开参数快照，网页修改客户端连接设置不会改动 systemd、NAT 或防火墙。
 

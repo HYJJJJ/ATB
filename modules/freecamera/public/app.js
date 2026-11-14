@@ -16,6 +16,7 @@ let stream = null, socket = null, peer = null, candidates = [], wakeLock = null,
 let renderWatch = null, statsWatch = null, reconnectTimer = null, registrationTimer = null, mediaRetry = null, lastFrame = 0, lastTime = -1;
 let active = false, subscribed = false, generation = 0, currentPeerId = null, rendered = 0, shuttingDown = false;
 let reconnectDelay = 1000, microphoneVersion = 0, selectionVersion = 0;
+let microphoneWatch = null, microphoneRecovery = null, microphoneRecoveryAt = 0, previousAudioSession;
 let account = null;
 const computeProvider = cameraMode ? null : createComputeProvider();
 let computeDiscovery = null, computeDiscoveryEpoch = 0;
@@ -106,8 +107,14 @@ function resetPeer() {
   if (!cameraMode) { video.srcObject = null; canvas.hidden = true; video.classList.remove('canvas-source'); $('placeholder').hidden = false; }
 }
 function disconnectSocket() { clearTimeout(registrationTimer); registrationTimer = null; const old = socket; socket = null; old?.close(); }
+function restoreAudioSession() {
+  try { if (previousAudioSession !== undefined && navigator.audioSession?.type === 'play-and-record') navigator.audioSession.type = previousAudioSession; } catch {}
+  previousAudioSession = undefined;
+}
 function stopCamera() {
   active = false; generation++; microphoneVersion++; clearTimeout(reconnectTimer); disconnectSocket(); cameraPeers.closeAll();
+  clearInterval(microphoneWatch); clearTimeout(microphoneRecovery); microphoneWatch = null;
+  restoreAudioSession();
   cameraSettings?.stop();
     cameraTalkback?.stop(); stream?.getTracks().forEach(t => { t.onended = null; t.stop(); }); stream = null; video.srcObject = null;
   wakeLock?.release().catch(() => {}); wakeLock = null; cameraButtons(false); $('pair-code').textContent = ''; $('placeholder').hidden = false;
@@ -115,12 +122,57 @@ function stopCamera() {
 }
 function hasMicrophone() { return !!stream?.getAudioTracks().some(track => track.readyState === 'live'); }
 function cameraRequest() { return { type: 'create', ...identity, name: $('camera-name').value, microphone: hasMicrophone() }; }
+function watchMicrophone(track, target) {
+  const current = () => active && stream === target && target.getAudioTracks().includes(track);
+  const recover = () => {
+    if (!current() || document.hidden || !$('microphone-toggle').checked || Date.now() - microphoneRecoveryAt < 30000) return;
+    clearTimeout(microphoneRecovery);
+    microphoneRecovery = setTimeout(() => {
+      if (!current() || document.hidden || track.readyState === 'live' && !track.muted) return;
+      microphoneRecoveryAt = Date.now();
+      diagnostic('麦克风恢复', '系统中断后重新采集');
+      void changeMicrophone(true).catch(e => diagnostic('麦克风恢复', e.message));
+    }, 1500);
+  };
+  track.onmute = () => { if (current()) { $('microphone-status').textContent = '麦克风被系统暂停，正在尝试恢复…'; recover(); } };
+  track.onunmute = () => { if (current()) { clearTimeout(microphoneRecovery); $('microphone-status').textContent = '正在收音 · 本机预览静音，避免回声。'; } };
+  track.onended = recover;
+  clearInterval(microphoneWatch);
+  let checking = false;
+  microphoneWatch = setInterval(async () => {
+    if (!current() || checking) return; checking = true;
+    try {
+      const sources = []; let bytes = 0;
+      for (const item of cameraPeers.peers.values()) {
+        if (!item.pc || item.pc.connectionState !== 'connected') continue;
+        (await item.pc.getStats()).forEach(s => {
+          if (s.type === 'media-source' && s.kind === 'audio' && (!s.trackIdentifier || s.trackIdentifier === track.id)) sources.push({ level: s.audioLevel, energy: s.totalAudioEnergy, seconds: s.totalSamplesDuration });
+          if (s.type === 'outbound-rtp' && s.kind === 'audio') bytes += s.bytesSent || 0;
+        });
+      }
+      if (!current()) return;
+      const settings = track.getSettings();
+      diagnostic('麦克风采集', JSON.stringify({ live: track.readyState === 'live', muted: track.muted, enabled: track.enabled, hidden: document.hidden,
+        session: navigator.audioSession?.type || 'unsupported', rate: settings.sampleRate, channels: settings.channelCount,
+        echo: settings.echoCancellation, noise: settings.noiseSuppression, gain: settings.autoGainControl, sources, bytes }));
+      if (track.muted || track.readyState !== 'live') recover();
+    } catch {} finally { checking = false; }
+  }, 5000);
+  if (track.muted || track.readyState !== 'live') recover();
+}
+document.addEventListener('visibilitychange', () => {
+  const track = stream?.getAudioTracks()[0];
+  if (cameraMode && !document.hidden && active && track && (track.muted || track.readyState !== 'live')) watchMicrophone(track, stream);
+});
 async function changeMicrophone(enabled, reason) {
   const version = ++microphoneVersion, target = stream;
   if (!active || !target) return;
-  const remove = () => { for (const track of target.getAudioTracks()) { track.onended = null; target.removeTrack(track); track.stop(); } };
+  const remove = () => {
+    clearInterval(microphoneWatch); clearTimeout(microphoneRecovery); microphoneWatch = null;
+    for (const track of target.getAudioTracks()) { track.onended = null; track.onmute = null; track.onunmute = null; target.removeTrack(track); track.stop(); }
+  };
   if (!enabled) {
-    remove(); $('microphone-toggle').checked = false; $('microphone-toggle').disabled = false;
+    remove(); restoreAudioSession(); $('microphone-toggle').checked = false; $('microphone-toggle').disabled = false;
     $('microphone-status').textContent = reason || '麦克风已关闭，已停止采集。';
     send({ type: 'microphone-state', enabled: false });
     await cameraPeers.replaceAudioTrack(null); return;
@@ -128,12 +180,16 @@ async function changeMicrophone(enabled, reason) {
   $('microphone-toggle').disabled = true; $('microphone-status').textContent = '等待麦克风授权…';
   let captured;
   try {
-    captured = await navigator.mediaDevices.getUserMedia({ video: false, audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    // Preserve duplex capture/playback on Safari; other browsers can omit AudioSession.
+    try { if (navigator.audioSession) { previousAudioSession ??= navigator.audioSession.type; navigator.audioSession.type = 'play-and-record'; } } catch {}
+    if (target.getAudioTracks().length) { remove(); await cameraPeers.replaceAudioTrack(null); }
+    if (version !== microphoneVersion || stream !== target || !active) return;
+    captured = await navigator.mediaDevices.getUserMedia({ video: false, audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: true } });
     if (version !== microphoneVersion || stream !== target || !active) { captured.getTracks().forEach(track => track.stop()); return; }
     const track = captured.getAudioTracks()[0];
     if (!track) throw Error('未检测到可用麦克风');
     target.addTrack(track);
-    track.onended = () => { if (stream === target && active) void changeMicrophone(false, '麦克风被系统中断，请重新开启。').catch(error => diagnostic('麦克风', error.message)); };
+    watchMicrophone(track, target);
     await cameraPeers.replaceAudioTrack(track);
     if (version !== microphoneVersion || stream !== target || !active) { target.removeTrack(track); track.onended = null; track.stop(); return; }
     $('microphone-toggle').checked = true; $('microphone-status').textContent = '正在收音 · 本机预览静音，避免回声。';
@@ -141,7 +197,7 @@ async function changeMicrophone(enabled, reason) {
   } catch (e) {
     captured?.getTracks().forEach(track => track.stop());
     if (version !== microphoneVersion || stream !== target || !active) return;
-    remove(); await cameraPeers.replaceAudioTrack(null);
+    remove(); restoreAudioSession(); await cameraPeers.replaceAudioTrack(null);
     $('microphone-toggle').checked = false; save('freecamera.microphone', false);
     $('microphone-status').textContent = e.name === 'NotAllowedError' ? '麦克风未获授权，视频继续。允许 Safari 麦克风权限后可重新开启。' : `收音不可用：${e.message}。视频继续。`;
     send({ type: 'microphone-state', enabled: false });

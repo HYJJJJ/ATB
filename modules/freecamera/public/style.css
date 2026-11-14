@@ -27,3 +27,6 @@ button:disabled{cursor:not-allowed}button,.button,.text-button,.device-connect,.
 @media(max-width:720px){.shell{padding-left:16px;padding-right:16px}header{height:56px;gap:12px}.brand,.setup-page .brand{font-size:17px;gap:8px}.brand small{font-size:8px;letter-spacing:1px}.platform-link{font-size:11px}.local-tag{display:none}main{padding-top:22px}.intro{margin-bottom:18px}.intro nav a{min-height:44px}.module-settings-body{align-items:flex-start;flex-direction:column;gap:3px}.module-settings{margin-bottom:14px}.video-stage{min-height:220px}.control-card,.guide-card{padding:18px}.desktop header{padding-left:20px;padding-right:150px}.desktop .brand small{display:none}}
 
 .module-settings .account-bar{margin:0;justify-content:flex-start;gap:12px}.module-settings .account-bar .text-button{min-height:36px}
+
+/* Match the shared settings rhythm and keep account/service text legible. */
+.module-settings{margin-bottom:22px}.module-settings>summary{padding:13px 18px;font-size:14px}.module-settings-body{padding:14px 18px 18px;gap:18px}.module-settings .account-bar,#service-address{font-size:14px}

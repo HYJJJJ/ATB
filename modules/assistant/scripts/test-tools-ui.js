@@ -1,0 +1,41 @@
+import assert from 'node:assert/strict';
+import {mkdtemp,mkdir,rm,writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {chromium} from 'playwright';
+import {startServers} from '../../../server/index.js';
+import {SESSION_COOKIE} from '../../../server/accounts.js';
+const dir=await mkdtemp(path.join(tmpdir(),'atb-tools-ui-')),evidence=fileURLToPath(new URL('../../../test-results/agent-tools-ui/',import.meta.url));let server,browser;
+try{
+  server=await startServers({lanIp:'127.0.0.1',httpsPort:0,httpPort:0,relayPort:0,publicOrigin:null,dataDir:path.join(dir,'data'),certDir:path.join(dir,'certs')});
+  await server.accounts.setup('tools-test','isolated-test-only');const session=await server.accounts.login('tools-test','isolated-test-only');
+  browser=await chromium.launch();const context=await browser.newContext({ignoreHTTPSErrors:true});await context.addCookies([{name:SESSION_COOKIE,value:session.token,domain:'127.0.0.1',path:'/',secure:true,httpOnly:true,sameSite:'Strict'}]);
+  const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.goto(`https://127.0.0.1:${server.secure.address().port}/modules/assistant/`);await page.locator('#workspace').waitFor({state:'visible'});
+  await page.locator('[data-page=tools]').click();await page.locator('[data-capability=search]').waitFor();
+  assert.equal(await page.locator('#tools-advanced').getAttribute('open'),null);
+  assert.equal(await page.locator('#tool-form').isVisible(),false,'technical form is hidden by default');
+  await page.locator('[data-capability=search] [data-action=disable]').click();
+  await page.locator('#tools-disabled [data-capability=search]').waitFor();
+  assert.equal(await page.locator('#tools-catalog').getByText('web_search',{exact:true}).count(),0);
+  await page.reload();await page.locator('#tools-disabled [data-capability=search]').waitFor();
+  await page.locator('[data-capability=search] [data-action=enable]').click();
+  await page.locator('#tools-enabled [data-capability=search]').waitFor();
+  await page.locator('#tools-advanced > summary').click();await page.locator('#tools-new').click();
+  await page.locator('#tool-id').fill('fixture');await page.locator('#tool-label').fill('演示工具');await page.locator('#tool-command').fill(process.execPath);
+  await page.locator('#tool-args').fill(JSON.stringify([fileURLToPath(new URL('../test/fixtures/mcp-server.mjs',import.meta.url))]));await page.locator('#tool-env').fill('{"TEST_SECRET":"private-test-value"}');
+  await page.locator('#tools-save').click();await page.waitForFunction(()=>document.getElementById('tools-catalog').textContent.includes('mcp__fixture__multiply'));
+  assert.match(await page.locator('#tool-servers').textContent(),/已连接/);await page.locator('[data-server=fixture] [data-action=edit]').click();
+  assert.doesNotMatch(await page.locator('#tool-env').inputValue(),/private-test-value/);
+  await page.locator('#tool-label').fill('尚未保存的草稿');
+  await page.locator('#tools-refresh').click();await page.waitForFunction(()=>!document.getElementById('tools-save').disabled);
+  assert.equal(await page.locator('#tool-label').inputValue(),'尚未保存的草稿');
+  assert.equal(await page.evaluate(()=>{const event=new Event('beforeunload',{cancelable:true});window.dispatchEvent(event);return event.defaultPrevented;}),true);
+  await page.locator('#tool-label').fill('演示工具');await page.locator('#tools-save').click();await page.waitForFunction(()=>!document.getElementById('tools-save').disabled);
+  await page.locator('[data-server=fixture] [data-action=disable]').click();await page.waitForFunction(()=>!document.getElementById('tools-catalog').textContent.includes('mcp__fixture__multiply'));
+  await page.reload();await page.locator('#tool-servers').getByText('演示工具',{exact:true}).waitFor();assert.equal(await page.locator('#tools-disabled [data-server=fixture]').count(),1);await page.locator('[data-server=fixture] [data-action=enable]').click();await page.locator('#tools-enabled [data-server=fixture]').waitFor();
+  await mkdir(evidence,{recursive:true});
+  for(const width of[1366,390]){await page.setViewportSize({width,height:800});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(evidence,`tools-${width}.png`),fullPage:true});}
+  assert.deepEqual(errors,[]);await writeFile(path.join(evidence,'result.json'),JSON.stringify({passed:9,errors},null,2));console.log('Tools UI: 9 checks passed; real isolated MCP discovery, save, redaction, disable, reload and responsive layout.');
+}finally{await browser?.close();await server?.close();await rm(dir,{recursive:true,force:true});}

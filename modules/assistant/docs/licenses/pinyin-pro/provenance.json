@@ -1,0 +1,13 @@
+{
+  "package": "pinyin-pro",
+  "version": "3.28.1",
+  "license": "MIT",
+  "repository": "git+https://github.com/zh-lx/pinyin-pro.git",
+  "registry": "https://registry.npmjs.org/pinyin-pro/3.28.1",
+  "archive": "https://registry.npmjs.org/pinyin-pro/-/pinyin-pro-3.28.1.tgz",
+  "integrity": "sha512-oqz8ulwRgtUXRi0vbqEfGNly19zpyCxYrjhkk5TibGcgSW6eNwS5woajCXRwqURi8Ehc2yOFTiB4uNoZ+NJOnA==",
+  "files": {
+    "pinyin-pro.js": "7250704d20d16399c7a75fbe218092987ce9fe75b7f891e5eef74d5a2a3d4223",
+    "LICENSE": "824f6069c5a59b0c1650d0fb9f8d091866c6019eb761c8e658dfc03f001eabd2"
+  }
+}

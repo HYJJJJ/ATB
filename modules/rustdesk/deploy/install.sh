@@ -31,7 +31,7 @@ PY
 "$base/hbbs" --version
 "$base/hbbr" --version
 umask 077
-printf 'RELAY_SERVER=%s\nALWAYS_USE_RELAY=Y\n' "$ATB_RELAY_SERVER" > /etc/atb-modules/rustdesk.env
+printf 'RELAY_SERVER=%s\nALWAYS_USE_RELAY=N\n' "$ATB_RELAY_SERVER" > /etc/atb-modules/rustdesk.env
 chmod 600 /etc/atb-modules/rustdesk.env
 for daemon in hbbs hbbr; do
   if [ "$daemon" = hbbs ]; then

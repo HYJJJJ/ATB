@@ -104,4 +104,10 @@ async function connectService({ dataRoot, lanIp, httpsPort, httpPort, startServe
   return { origin, ca, platform: true, reused: false, close: () => server.close() };
 }
 
-module.exports = { probeLocalServer, connectService, normalizeServiceOrigin, connectRemoteService, validateRoot, loadConnectionProfile, saveConnectionProfile };
+async function connectLocalService({ dataRoot, httpsPort, httpPort }) {
+  const { selectedIp } = await import('../scripts/network.js');
+  const { startServers } = await import('../server/index.js');
+  return connectService({ dataRoot, lanIp: selectedIp(), httpsPort, httpPort, startServers });
+}
+
+module.exports = { probeLocalServer, connectService, connectLocalService, normalizeServiceOrigin, connectRemoteService, validateRoot, loadConnectionProfile, saveConnectionProfile };

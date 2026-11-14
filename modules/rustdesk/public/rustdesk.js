@@ -46,16 +46,18 @@ $('settings-form').addEventListener('submit', async event => {
 });
 async function launch(action, options, button) {
   button.disabled = true;
-  try { const result = await invokeRustDesk(action, options); if (result?.launched) notice('已启动 RustDesk；请在官方客户端中继续操作'); }
+  const label = button.textContent; button.textContent = '正在启动…';
+  notice('正在准备 RustDesk 本机服务…');
+  try { const result = await invokeRustDesk(action, options); if (!result?.launched) throw Error(result?.error || '无法启动 RustDesk'); notice('已启动 RustDesk；请在官方客户端中继续操作'); }
   catch (error) { notice(error.message, true); }
-  finally { button.disabled = false; }
+  finally { button.disabled = false; button.textContent = label; }
 }
 $('open-client').addEventListener('click', () => launch('open', {}, $('open-client')));
 $('connect-form').addEventListener('submit', event => { event.preventDefault(); const id = $('remote-id').value; if (!/^[0-9 ]{6,30}$/.test(id) || !/^[0-9]{6,20}$/.test(id.replaceAll(' ', ''))) { notice('请输入 6 至 20 位数字的 RustDesk ID', true); return; } void launch('connect', { id }, $('connect-client')); });
 async function initDesktop() {
   if (!desktopAvailable()) { $('native-state').textContent = '浏览器模式 · 下载并手动打开官方 RustDesk 客户端'; return; }
   document.documentElement.classList.add('desktop');
-  try { const result = await invokeRustDesk('status'); $('native-state').textContent = result.installed ? '已找到 Windows RustDesk 客户端 · 请先配置两端服务器字段' : '尚未找到已安装客户端 · 请先从官方页面安装'; $('open-client').disabled = !result.installed; $('connect-client').disabled = !result.installed; }
+  try { const result = await invokeRustDesk('status'); $('native-state').textContent = result.installed ? '已找到 Windows RustDesk 客户端 · 打开时自动启动本机服务' : '尚未找到已安装客户端 · 请先从官方页面安装'; $('open-client').disabled = !result.installed; $('connect-client').disabled = !result.installed; }
   catch (error) { $('native-state').textContent = error.message; }
 }
 void initDesktop();

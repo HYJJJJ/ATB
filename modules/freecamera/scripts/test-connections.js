@@ -41,7 +41,8 @@ async function mouse(button = 'back') {
   await cdp.detach();
 }
 async function viewer(expected = origin) {
-  await page.waitForURL(url => url.origin === expected && ["/platform", "/"].includes(url.pathname));
+  await page.waitForURL(url => url.origin === origin && url.pathname === '/platform'
+    || url.origin === expected && ["/platform", "/", "/modules/freecamera/"].includes(url.pathname));
   // The document can be interactive before BrowserWindow.loadURL resolves.
   // Let the native connection transaction finish before the test navigates again.
   await page.waitForLoadState('load');
@@ -49,7 +50,8 @@ async function viewer(expected = origin) {
     const contents = BrowserWindow.getAllWindows()[0].webContents;
     if (contents.isLoadingMainFrame()) await new Promise(resolve => contents.once('did-stop-loading', resolve));
   });
-  if (new URL(page.url()).pathname === "/platform") await page.goto(`${expected}/?mode=viewer`);
+  if (new URL(page.url()).pathname === "/platform") await page.goto(`${origin}/?mode=viewer`);
+  assert.equal(new URL(page.url()).origin, expected);
   await page.locator('#module-settings').waitFor({ state: 'visible' });
   await page.evaluate(async () => (await import("/desktop-bridge.js")).cameraDesktop.detectionState());
 }

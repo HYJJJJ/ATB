@@ -1,0 +1,46 @@
+:root{color-scheme:dark;font-family:"Microsoft YaHei UI",system-ui,sans-serif;color:#e3eaf4;font-size:13px}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:clip;background:transparent}
+button{font:inherit;color:inherit;cursor:pointer}button:focus-visible{outline:2px solid #b1d9fb;outline-offset:2px}[hidden]{display:none!important}
+#companion{position:relative;width:100%;height:100%;--level:0;--anchor-x:50%;--anchor-y:calc(50% + 25px)}
+#avatar{position:absolute;left:calc(var(--anchor-x) - 80px);top:calc(var(--anchor-y) - 95px);width:160px;height:190px;border:0;padding:0;background:none;touch-action:none;user-select:none;filter:drop-shadow(0 8px 14px #10172266)}
+#avatar:focus{outline:none}#avatar:focus-visible svg{filter:brightness(1.08)}
+#avatar svg{width:100%;height:100%;overflow:visible}#avatar .character{transform-origin:100px 170px;animation:float 5s ease-in-out infinite}#avatar .eyes{transform-origin:100px 115px;animation:blink 7s infinite}#avatar .mouth-open{opacity:0}
+#avatar .listening-hand{opacity:0;transform-origin:140px 150px;transform:translate(-6px,22px) rotate(12deg);transition:opacity .18s ease,transform .3s ease}
+#avatar .resting-arm{transition:opacity .18s ease}
+#companion[data-phase=listening] .listening-hand{opacity:1;transform:translate(0,0) rotate(0)}
+#companion[data-phase=listening] .resting-arm{opacity:0}
+#companion[data-phase=listening] .character{animation:none;transform:rotate(5deg) translateY(-2px)}
+#companion[data-phase=speaking] .mouth-open{opacity:calc(.2 + var(--level)*.8);transform-origin:102px 134px;transform:scaleY(calc(.6 + var(--level)*2))}#companion[data-phase=speaking] .smile{opacity:.2}
+#companion[data-phase=listening] #avatar{filter:drop-shadow(0 0 calc(5px + var(--level)*26px) #8bb9e988)}#companion[data-mood=happy] .character{animation-duration:2s}#companion[data-mood=sad] #avatar{filter:saturate(.65)}
+#speech,#notice{position:absolute;display:flex;flex-direction:column;max-width:calc(100% - 16px);overflow:hidden;border:1px solid #5f7c9b70;background:#172332f5;box-shadow:0 8px 28px #0003}
+#speech{width:350px;max-height:calc(100% - 16px);border-radius:16px 16px 16px 5px;padding:9px 11px 11px;transition:height .18s ease,top .18s ease}
+#speech header{display:flex;flex:none;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:#9cb6d1;min-height:22px;margin-bottom:3px}
+#speech header span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#speech-body{min-height:0;overflow:auto;overflow-anchor:none;overscroll-behavior:contain;scrollbar-width:none}
+#speech-body::-webkit-scrollbar{display:none}
+#menu{min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#617a96 transparent}
+#menu::-webkit-scrollbar{width:5px;height:5px}
+#menu::-webkit-scrollbar-thumb{background:#617a96;border-radius:8px}
+#menu::-webkit-scrollbar-track{background:transparent}
+#menu::-webkit-scrollbar-button{display:none;width:0;height:0}
+#reply{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65}#reply-images{display:flex;gap:6px;flex-wrap:wrap}.image-open{background:#26394e;border:1px solid #547394;border-radius:7px;padding:5px 9px;margin-top:7px;font-size:12px}
+#notice{width:184px;max-height:90px;padding:7px 10px 9px;border-radius:11px;background:#1c2a3bf2;opacity:0;visibility:hidden;pointer-events:none;will-change:transform,opacity}
+#notice.visible{visibility:visible}#notice-title{display:block;margin-bottom:3px;font-size:10px;line-height:1.4;color:#9cb6d1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#notice-text{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:0;font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+#menu{position:absolute;z-index:5;min-width:174px;max-width:calc(100% - 16px);max-height:calc(100% - 16px);padding:6px;background:#1c293bf8;border:1px solid #56708f;border-radius:12px;box-shadow:0 12px 30px #0005}
+#menu button{display:block;width:100%;text-align:left;border:0;border-radius:6px;background:none;padding:7px 12px;font-size:12px}#menu button:hover,#menu button:focus-visible{background:#344b66}#menu hr{border:0;border-top:1px solid #455d7855;margin:5px}
+dialog{color:#e3eaf4;border:1px solid #647f9f;border-radius:16px;background:#182332;padding:14px;width:calc(100% - 28px);max-width:780px;height:calc(100% - 28px);max-height:620px;overflow:hidden;box-shadow:0 10px 38px #0006}dialog::backdrop{background:#0d1423a8}dialog header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}dialog header span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#image-close{border:1px solid #536d8b;background:#283b50;border-radius:7px;font-size:20px;width:32px;height:30px}#large-image{width:100%;height:calc(100% - 74px);object-fit:contain}#image-error{color:#e6b88d;font-size:12px;margin:5px 0}
+@keyframes float{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-4px) rotate(1deg)}}@keyframes blink{0%,44%,47%,100%{transform:scaleY(1)}45.5%{transform:scaleY(.1)}}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+.tool-sources{font-size:11px;line-height:1.6;color:#9aadc4;margin-top:7px;overflow-wrap:anywhere}.tool-sources a{color:#a5c6e8;text-decoration:none}.tool-sources a:hover{text-decoration:underline}
+
+#avatar .thinking-hand,#avatar .thought-dots{opacity:0;transition:opacity .2s ease}
+#companion[data-pose=thinking] .thinking-hand,#companion[data-pose=thinking] .thought-dots{opacity:1}
+#companion[data-pose=thinking] .resting-arm{opacity:0}
+#companion[data-pose=thinking] .character{animation:ponder 2.8s ease-in-out infinite;transform:rotate(-5deg)}
+#companion[data-pose=thinking] .eyes{animation:none;transform:translate(-2px,-3px)}
+#companion[data-pose=thinking] .thought-dots circle{animation:thought 1.6s ease-in-out infinite}
+#companion[data-pose=thinking] .thought-dots circle:nth-child(2){animation-delay:.2s}
+#companion[data-pose=thinking] .thought-dots circle:nth-child(3){animation-delay:.4s}
+@keyframes ponder{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(-3deg) translateY(-2px)}}
+@keyframes thought{0%,100%{opacity:.3}50%{opacity:1}}
+@media(prefers-reduced-motion:reduce){#companion[data-pose=thinking] .character{transform:rotate(-5deg)}}

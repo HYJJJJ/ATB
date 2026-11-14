@@ -130,26 +130,53 @@ test('sandboxed preload exposes generic APIs and synchronously validates install
 
 async function desktopHarness(env = {}) {
   const ipc = new Map(), events = [], paths = {}, app = new EventEmitter();
-  let ready, win, context, saveDialog = async () => ({ canceled: true });
+  let ready, win, context, beforeRequest, confirmTimer, dirty = false, leaveDialog = () => false, saveDialog = async () => ({ canceled: true });
   Object.assign(app, { isPackaged: true, setName(name) { this.name = name; }, getPath: name => paths[name] || `C:\\Profiles\\${app.name}`, setPath: (name, value) => { paths[name] = value; }, setAppUserModelId: id => { app.modelId = id; }, getVersion: () => '0.6.0', requestSingleInstanceLock: () => true, quit: () => events.push('quit'), whenReady: () => ({ then(callback) { ready = callback(); return ready; } }) });
   class BrowserWindow extends EventEmitter {
     constructor(options) {
       super(); win = this; this.options = options;
       const contents = this.webContents = new EventEmitter();
-      Object.assign(contents, { id: 12, mainFrame: { url: '' }, getURL: () => contents.mainFrame.url, navigationHistory: { clear() {} }, executeJavaScript: async source => events.push(source), session: { setCertificateVerifyProc() {}, setPermissionRequestHandler() {}, setPermissionCheckHandler() {}, webRequest: { onBeforeRequest() {} } }, setWindowOpenHandler() {} });
+      Object.assign(contents, { id: 12, isDestroyed: () => false, mainFrame: { url: '' }, send: (...args) => events.push(['send', ...args]), getURL: () => contents.mainFrame.url, navigationHistory: { clear() {} }, executeJavaScript: async source => { events.push(source); return source.includes('atbConfirmLeave') ? leaveDialog() : source.includes('atbHasUnsavedChanges') ? dirty : false; }, session: { setCertificateVerifyProc() {}, setPermissionRequestHandler() {}, setPermissionCheckHandler() {}, protocol: { handle() {} }, webRequest: { onBeforeRequest(callback) { beforeRequest=callback; } } }, setWindowOpenHandler() {} });
     }
     isDestroyed() { return false; }
-    async loadURL(url) { this.webContents.mainFrame.url = url; }
+    isMaximized() { return Boolean(this.maximized); }
+    maximize() { this.maximized = true; this.emit('maximize'); }
+    unmaximize() { this.maximized = false; this.emit('unmaximize'); }
+    minimize() { events.push('minimize'); }
+    isMinimized() { return false; }
+    show() { events.push('show'); }
+    focus() { events.push('focus'); }
+    close() { events.push('window-close'); }
+    async loadURL(url) { if (this.webContents.mainFrame.url && this.testBlockedLoad) { let allowed = false; this.webContents.emit('will-prevent-unload', { preventDefault() { allowed = true; } }); if (!allowed) return; this.testAllowedLoad = true; } this.webContents.mainFrame.url = url; }
     async loadFile(filename) { this.webContents.mainFrame.url = require('node:url').pathToFileURL(filename).href; }
   }
-  const modules = { ids: ['example'], invoke: async (...args) => { events.push(['invoke', ...args]); return true; }, suspend: async owner => events.push(['suspend', owner]), close: async () => events.push('modules-close') };
-  const electron = { app, BrowserWindow, ipcMain: { handle: (channel, callback) => ipc.set(channel, callback) }, dialog: { showSaveDialog: (...args) => saveDialog(...args), showErrorBox: (...args) => events.push(['error', ...args]) }, Notification: { isSupported: () => false }, Menu: { setApplicationMenu() {} } };
-  const service = { loadConnectionProfile: async () => ({ mode: 'remote', origin: 'https://127.0.0.1:8443', ca: 'preserved-ca', remotes: [] }), connectRemoteService: async ({ address }) => ({ origin: address, ca: 'preserved-ca', platform: true }), saveConnectionProfile: async () => {}, validateRoot: () => ({}) };
-  vm.runInNewContext(await readFile(path.join(projectRoot, 'desktop/main.cjs'), 'utf8'), { require(name) { if (name === 'electron') return electron; if (name === './module-host.cjs') return { loadDesktopModules(options) { context = options.context; return modules; } }; if (name === './service.cjs') return service; if (name === 'node:fs') return { mkdirSync() {} }; return require(name.startsWith('./') ? path.join(projectRoot, 'desktop', name) : name); }, __dirname: path.join(projectRoot, 'desktop'), process: { platform: 'win32', env }, console, URL, setTimeout, clearTimeout });
+  const modules = { ids: ['example'], remoteUi: [], invoke: async (...args) => { events.push(['invoke', ...args]); return true; }, suspend: async owner => events.push(['suspend', owner]), close: async () => events.push('modules-close') };
+  const electron = { app, BrowserWindow, ipcMain: { handle: (channel, callback) => ipc.set(channel, callback) }, dialog: { showMessageBoxSync: (...args) => leaveDialog(...args), showSaveDialog: (...args) => saveDialog(...args), showErrorBox: (...args) => events.push(['error', ...args]) }, Notification: { isSupported: () => false }, Menu: { setApplicationMenu() {} } };
+  const service = { loadConnectionProfile: async () => ({ mode: 'remote', origin: 'https://127.0.0.1:8443', ca: 'preserved-ca', remotes: [] }), connectLocalService: async () => ({ origin: 'https://127.0.0.1:8443', ca: 'local-ca', platform: true, close: async () => {} }), connectRemoteService: async ({ address }) => ({ origin: address, ca: 'preserved-ca', platform: true, remote: true }), saveConnectionProfile: async () => {}, validateRoot: () => ({}) };
+  vm.runInNewContext(await readFile(path.join(projectRoot, 'desktop/main.cjs'), 'utf8'), { require(name) { if (name === 'electron') return electron; if (name === './module-host.cjs') return { loadDesktopModules(options) { context = options.context; return modules; } }; if (name === './service.cjs') return service; if (name === 'node:fs') return { mkdirSync() {} }; return require(name.startsWith('./') ? path.join(projectRoot, 'desktop', name) : name); }, __dirname: path.join(projectRoot, 'desktop'), process: { platform: 'win32', env }, console, URL, setTimeout(callback,ms,...args) { if(ms===45000)confirmTimer=callback;return setTimeout(callback,ms,...args); }, clearTimeout });
   await ready;
   const event = () => ({ sender: win.webContents, senderFrame: win.webContents.mainFrame });
-  return { ipc, events, win, app, paths, context, event, setSaveDialog(callback) { saveDialog = callback; } };
+  return { ipc, events, win, app, paths, context, event, expireConfirm() { confirmTimer(); }, request(details){let result;beforeRequest(details,value=>{result=value;});return result;}, setDirty(value) { dirty = value; }, setSaveDialog(callback) { saveDialog = callback; }, setLeaveDialog(callback) { leaveDialog = callback; } };
 }
+
+test('desktop action approval binds the themed dialog to its request and rejects abort, timeout or navigation',async()=>{
+ const shell=await desktopHarness(),contents=shell.win.webContents,calls=[];let release;
+ contents.executeJavaScript=async source=>{calls.push(source);return source.includes('atbCancelConfirm')?false:new Promise(resolve=>release=resolve);};
+ const details={title:'确认操作应用',message:'点击模拟按钮',detail:'Test input：测试123'};
+ const approved=shell.context.confirmDesktopAction(details);await new Promise(r=>setImmediate(r));
+ assert.ok(calls[0].includes('window.atbConfirm'));assert.ok(calls[0].includes('requestId'));release(true);assert.equal(await approved,true);
+ const controller=new AbortController(),cancelled=shell.context.confirmDesktopAction(details,{signal:controller.signal});await new Promise(r=>setImmediate(r));controller.abort();await assert.rejects(cancelled);assert.ok(calls.at(-1).includes('atbCancelConfirm'));
+ const timeout=shell.context.confirmDesktopAction(details);await new Promise(r=>setImmediate(r));shell.expireConfirm();assert.equal(await timeout,false);assert.ok(calls.at(-1).includes('atbCancelConfirm'));
+ const moved=shell.context.confirmDesktopAction(details);await new Promise(r=>setImmediate(r));contents.mainFrame.url+='?another';release(true);assert.equal(await moved,false,'approval cannot cross navigation');
+});
+
+test('session requests without a webContents ID cannot throw native conversion errors',async()=>{
+ const shell=await desktopHarness();assert.equal(shell.request({url:'https://127.0.0.1:8443/api/auth/session'}).cancel,false);
+ assert.equal(shell.request({url:'https://outside.example/test'}).cancel,true);
+ const unregister=shell.context.registerBackground({id:99,isDestroyed:()=>false});
+ assert.equal(shell.request({url:'https://127.0.0.1:8443/modules/assistant/companion.js',webContentsId:99}).cancel,false);unregister();
+ assert.equal(shell.request({url:'https://127.0.0.1:8443/api/auth/session',webContentsId:undefined}).cancel,false);
+});
 
 test('main preserves legacy profile, chooses ATB data override, and applies sender trust before generic dispatch', async () => {
   const shell = await desktopHarness({ ATB_DATA_DIR: 'E:\\ATB-test', FREECAMERA_DATA_DIR: 'E:\\legacy-test' });
@@ -198,4 +225,89 @@ test('save dialogs retain the owner lock and reject results after navigation', a
   assert.equal((await first).canceled, true);
   shell.setSaveDialog(async () => ({ canceled: true }));
   assert.equal((await shell.context.chooseFile(12, {})).canceled, true);
+});
+
+
+test('shared window controls work in modules and connection settings and reject foreign frames', async () => {
+  const shell = await desktopHarness(), control = shell.ipc.get('atb:window');
+  assert.equal(typeof control, 'function');
+  assert.equal(shell.win.options.frame, false);
+  assert.equal((await control(shell.event(), 'state')).maximized, false);
+  assert.equal((await control(shell.event(), 'maximize')).maximized, true);
+  assert.equal((await control(shell.event(), 'maximize')).maximized, false);
+  await control(shell.event(), 'minimize');
+  assert.ok(shell.events.includes('minimize'));
+  assert.ok(shell.events.some(event => Array.isArray(event) && event[0] === 'send' && event[1] === 'atb:window-state'));
+  assert.throws(() => control({ sender: shell.win.webContents, senderFrame: { url: shell.win.webContents.getURL() } }, 'minimize'), /Untrusted/);
+  assert.throws(() => control(shell.event(), 'execute'), /Invalid/);
+  await shell.ipc.get('atb:connection-settings')(shell.event());
+  assert.equal((await control(shell.event(), 'state')).maximized, false);
+  await control(shell.event(), 'close');
+  assert.ok(shell.events.includes('window-close'));
+  shell.win.webContents.mainFrame.url = 'https://other.test/';
+  assert.throws(() => control(shell.event(), 'close'), /Untrusted/);
+});
+
+
+test('desktop unload guard defaults to keeping drafts and retries approved navigation only while the page is current', async () => {
+  const shell = await desktopHarness(), contents = shell.win.webContents;
+  const original = contents.getURL(), target = 'https://127.0.0.1:8443/platform?next';
+  let bypassed = false;
+  const event = { preventDefault() { bypassed = true; } };
+  contents.emit('did-start-navigation', {}, target, false, true);
+  contents.emit('will-prevent-unload', event);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(contents.getURL(), original);
+  assert.equal(bypassed, false);
+  let resolveChoice, prompts = 0;
+  shell.setLeaveDialog(() => { prompts++; return new Promise(resolve => { resolveChoice = resolve; }); });
+  contents.emit('will-prevent-unload', event);
+  contents.emit('will-prevent-unload', event);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(prompts, 1);
+  shell.win.testBlockedLoad = true;
+  resolveChoice(true);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(contents.getURL(), target);
+  assert.equal(shell.win.testAllowedLoad, true);
+  bypassed = false; contents.mainFrame.url = original;
+  contents.emit('did-start-navigation', {}, target, false, true);
+  contents.emit('will-prevent-unload', event);
+  await new Promise(resolve => setImmediate(resolve));
+  contents.mainFrame.url = 'https://untrusted.test/';
+  resolveChoice(true);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(contents.getURL(), 'https://untrusted.test/');
+  contents.emit('will-prevent-unload', event);
+  assert.equal(bypassed, false);
+});
+
+test('quitting dirty settings asks once and cancel preserves the app before any cleanup', async () => {
+  const shell = await desktopHarness(); shell.setDirty(true);
+  let resolveChoice, prompts = 0;
+  shell.setLeaveDialog(() => { prompts++; return new Promise(resolve => { resolveChoice = resolve; }); });
+  shell.app.emit('before-quit', { preventDefault() {} });
+  shell.app.emit('before-quit', { preventDefault() {} });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(prompts, 1);
+  assert.equal(shell.events.includes('modules-close'), false);
+  resolveChoice(false);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(shell.events.includes('quit'), false);
+  shell.setLeaveDialog(() => true);
+  shell.app.emit('before-quit', { preventDefault() {} });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(shell.events.includes('modules-close'), true);
+  assert.equal(shell.events.includes('quit'), true);
+});
+
+test('opening connection settings retains dirty page and avoids cleanup when leave is canceled', async () => {
+  const shell = await desktopHarness(), original = shell.win.webContents.getURL();
+  shell.setDirty(true); shell.setLeaveDialog(() => false);
+  await shell.ipc.get('atb:connection-settings')(shell.event());
+  assert.equal(shell.win.webContents.getURL(), original);
+  assert.equal(shell.events.some(event => Array.isArray(event) && event[0] === 'suspend'), false);
+  shell.setLeaveDialog(() => true);
+  await shell.ipc.get('atb:connection-settings')(shell.event());
+  assert.match(shell.win.webContents.getURL(), /connect.html$/);
 });

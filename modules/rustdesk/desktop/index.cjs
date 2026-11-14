@@ -1,6 +1,7 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const childProcess = require('node:child_process');
+const { ensureWindowsService } = require('./windows-service.cjs');
 
 function validateRemoteId(value) {
   if (typeof value !== 'string' || !/^[0-9 ]{6,30}$/.test(value)) throw Error('请输入 6 至 20 位数字的 RustDesk ID');
@@ -17,12 +18,17 @@ function clientCandidates(env = process.env) {
   return [...new Set(candidates)];
 }
 function createDesktopModule() {
-  let closed = false;
+  let closed = false, servicePreparation = null;
   const findClient = () => process.platform === 'win32' ? clientCandidates().find(candidate => fs.existsSync(candidate)) : undefined;
   async function launch(args) {
     if (closed) throw Error('RustDesk 模块已关闭');
     const executable = findClient();
     if (!executable) return { launched: false, installed: false, error: '未找到已安装的 Windows RustDesk 客户端，请通过官方下载页安装。' };
+    if (!servicePreparation) {
+      servicePreparation = ensureWindowsService(executable).finally(() => { servicePreparation = null; });
+    }
+    await servicePreparation;
+    if (closed) throw Error('RustDesk 模块已关闭');
     await new Promise((resolve, reject) => {
       const child = childProcess.execFile(executable, args, { shell: false, windowsHide: false, detached: true, maxBuffer: 65536 }, () => {});
       // A GUI may remain open for hours. Drain output without retaining logs or

@@ -2,12 +2,17 @@
   "id": "freecamera",
   "name": "FreeCamera",
   "description": "手机摄像头、实时观看、人物检测和本地录像",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "apiVersion": 1,
   "entry": "/modules/freecamera/",
   "server": "server/index.js",
   "desktop": "desktop/index.cjs",
+  "desktopRemote": {
+    "legacyViewer": true
+  },
   "assets": {
+    "/modules/freecamera/presence-camera.html": "public/presence-camera.html",
+    "/modules/freecamera/presence-camera.js": "public/presence-camera.js",
     "/modules/freecamera/": "public/index.html",
     "/modules/freecamera/index.html": "public/index.html",
     "/setup": "public/setup.html",

@@ -1,0 +1,30 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import {createAssistantRoutes} from '../server/assistant-routes.js';
+async function fixture(t){const dataDir=await mkdtemp(path.join(tmpdir(),'atb-opp-routes-'));let at=Date.parse('2026-11-14T04:00:00Z'),choice={action:'none'},calls=[],authorized=true,decisionHold,started;
+ const routes=await createAssistantRoutes({dataDir,accounts:{session:token=>authorized&&['alice','bob'].includes(token)?{user:{username:token}}:null},opportunity:{now:()=>at,random:()=>0},request:async(_url,options)=>{const payload=JSON.parse(options.body);calls.push(payload);if(payload.tools?.some(t=>t.function?.name==='opportunity_decide'||t.name==='opportunity_decide')){started?.();if(decisionHold)await decisionHold;}const call={name:'opportunity_decide',arguments:JSON.stringify(choice)};return {ok:true,json:async()=>payload.tools?.some(t=>t.function?.name==='opportunity_decide'||t.name==='opportunity_decide')?{choices:[{message:{tool_calls:[{type:'function',function:call}]}}]}:{choices:[{message:{content:'正常回复'}}]}};}});
+ const server=http.createServer(async(req,res)=>{if(!await routes(req,res,new URL(req.url,'https://local').pathname)){res.writeHead(404);res.end();}});await new Promise(r=>server.listen(0,'127.0.0.1',r));const host='127.0.0.1:'+server.address().port;
+ const call=(route,body,owner='alice',origin=true)=>fetch('http://'+host+'/api/assistant/'+route,{method:body?'POST':'GET',headers:{cookie:'__Host-freecamera='+owner,...(body?{'content-type':'application/json',...(origin?{origin:'https://'+host}:{})}:{})},...(body?{body:JSON.stringify(body)}:{})});
+ await call('settings',{scope:'model',apiSource:'custom',provider:'custom',baseUrl:'https://fixture.invalid/v1',apiKey:'fixture-only',model:'test'});await call('settings',{scope:'persona',name:'小鲸鱼',prompt:'自然聊天',proactiveChat:true});
+ t.after(async()=>{await routes.close();await new Promise(r=>server.close(r));await rm(dataDir,{recursive:true,force:true});});
+ return {call,calls,advance:()=>{at+=91*60000;},choose:v=>{choice=v;},revoke:()=>{authorized=false;},hold:()=>{let release;decisionHold=new Promise(r=>{release=r;});const ready=new Promise(r=>{started=r;});return {ready,release};}};}
+test('authenticated poll persists chance, none is silent, status isolated, origin checked',async t=>{const f=await fixture(t);let r=await f.call('opportunity',{});assert.equal(r.status,200);assert.equal((await r.json()).reply,'');f.advance();const result=await(await f.call('opportunity',{})).json();assert.equal(result.action,'none');const status=await(await f.call('opportunity')).json();assert.equal(status.todayCount,1);assert.equal(status.outcomes.at(-1).action,'none');assert.equal(status.outcomes.at(-1).roll,0);assert.equal((await(await f.call('opportunity',undefined,'bob')).json()).todayCount,0);assert.equal((await f.call('opportunity',{},'alice',false)).status,403);assert.equal((await f.call('opportunity',{},'unknown')).status,401);});
+test('owner messages delivered at most twice and old direct proactive request cannot bypass scheduler',async t=>{const f=await fixture(t);f.choose({action:'chat',text:'吃饭了吗'});await f.call('opportunity',{});for(let i=0;i<3;i++){f.advance();const r=await(await f.call('opportunity',{})).json();assert.equal(r.reply,i<2?'吃饭了吗':'');}assert.equal((await(await f.call('opportunity')).json()).chatCount,2);const before=f.calls.length;const old=await(await f.call('chat',{proactive:true,messages:[{role:'user',content:'刚才聊过'}]})).json();assert.equal(old.skipped,true);assert.equal(f.calls.length,before);});
+test('real dialogue suppresses due chance and disabling stops new model calls',async t=>{const f=await fixture(t);await f.call('opportunity',{});f.advance();await f.call('chat',{messages:[{role:'user',content:'我还在说话'}]});const before=f.calls.length;await f.call('opportunity',{});assert.equal(f.calls.length,before);let state=await(await f.call('opportunity')).json();assert.equal(state.outcomes.at(-1).detail,'recent-dialogue');await f.call('settings',{scope:'persona',name:'小鲸鱼',prompt:'自然聊天',proactiveChat:false});f.advance();await f.call('opportunity',{});assert.equal(f.calls.length,before);});
+
+test('snooze or quiet settings changed during a model decision cancel delayed owner messages',async t=>{
+ const f=await fixture(t);f.choose({action:'chat',text:'迟到主动消息'});await f.call('opportunity',{});f.advance();const held=f.hold();const job=f.call('opportunity',{});await held.ready;
+ await f.call('presence',{action:'snooze',minutes:30});held.release();const result=await(await job).json();assert.equal(result.reply,'');const state=await(await f.call('opportunity')).json();assert.equal(state.chatCount,0);assert.equal(state.outcomes.at(-1).action,'none');
+});
+
+test('logout during a decision returns401 and never sends delayed text',async t=>{
+ const f=await fixture(t);f.choose({action:'chat',text:'不能发送的旧消息'});await f.call('opportunity',{});f.advance();const held=f.hold();const job=f.call('opportunity',{});await held.ready;f.revoke();held.release();const result=await job;assert.equal(result.status,401);assert.doesNotMatch(await result.text(),/不能发送的旧消息/);
+});
+test('disable during a decision discards it and probability/wake cap inputs are validated',async t=>{
+ const f=await fixture(t);for(const patch of [{opportunityProbability:-.1},{opportunityProbability:2},{opportunityProbability:'0.5'},{opportunityDailyLimit:9},{opportunityDailyLimit:1.5}])assert.equal((await f.call('settings',{scope:'persona',name:'鲸鱼',prompt:'自然',...patch})).status,400);
+ f.choose({action:'chat',text:'不能发送的旧消息'});await f.call('opportunity',{});f.advance();const held=f.hold();const job=f.call('opportunity',{});await held.ready;await f.call('settings',{scope:'persona',name:'鲸鱼',prompt:'自然',proactiveChat:false});held.release();assert.equal((await(await job).json()).reply,'');assert.equal((await(await f.call('opportunity')).json()).chatCount,0);
+});

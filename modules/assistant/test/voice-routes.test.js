@@ -24,7 +24,11 @@ test('voice HTTP requires admin and same origin and keeps leases scoped', async 
   assert.equal((await post('open', {})).status, 200); assert.deepEqual(calls[0], ['open', 'admin']);
   assert.equal((await post('transcribe', { leaseId: 'lease', pcm: 'data' })).status, 200);
   assert.equal((await post('close', { leaseId: 'lease' })).status, 200);
-  assert.deepEqual(calls.at(-1), ['close', 'admin', 'lease']);
+  assert.deepEqual(calls.at(-1), ['close', 'admin', 'lease', { keepWarm: false }]);
+  await post('close', { leaseId: 'lease', keepWarm: true });
+  assert.deepEqual(calls.at(-1), ['close', 'admin', 'lease', { keepWarm: true }]);
+  await post('close', { leaseId: 'lease', keepWarm: 'true' });
+  assert.deepEqual(calls.at(-1), ['close', 'admin', 'lease', { keepWarm: false }]);
   const beforeInvalidClose = calls.length;
   assert.equal((await post('close', {})).status, 400);
   assert.equal(calls.length, beforeInvalidClose);
@@ -52,5 +56,5 @@ test('disconnecting a transcription HTTP request closes its own worker lease', a
   });
   request.on('error', () => {}); request.end(JSON.stringify({ leaseId: 'owned-lease', pcm: 'data' }));
   await waiting; request.destroy();
-  assert.deepEqual(await closed, ['admin', 'owned-lease']);
+  assert.deepEqual(await closed, ['admin', 'owned-lease', { keepWarm: true }]);
 });

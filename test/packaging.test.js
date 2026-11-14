@@ -9,10 +9,11 @@ import { root, stageVariant, fileList, assertRuntimePath, sha256 } from '../scri
 import { assertPublicSourcePath, assertPublicText, verifyFirstPartyRuntime, createManifest } from '../scripts/release-atb.js';
 
 test('public archive allowlist accepts release tooling and rejects private source', () => {
-  for (const filename of ['scripts/package-atb.js', 'scripts/release-atb.js', 'desktop/electron-builder.cjs', 'docs/MODULES.md', 'docs/DEPLOYMENT.md', '.github/workflows/release.yml', 'modules/rustdesk/deploy/atb-rustdesk-supervisor.sh']) assert.doesNotThrow(() => assertPublicSourcePath(filename));
-  for (const filename of ['docs/SERVER.md', 'docs/cloud-access.md', 'data/account.json', 'certs/ca.crt', 'desktop-profile/Cookies', 'modules/assistant/voice-runtime/python.exe', 'modules/freecamera/models/yolox_tiny.onnx', 'node_modules/secret.js', '../README.md', '.env', 'unexpected.txt']) assert.throws(() => assertPublicSourcePath(filename), /rejected|not explicitly/);
+  for (const filename of ['modules/assistant/package-lock.json', 'modules/assistant/public/vision/LICENSE', 'modules/assistant/public/vision/face_recognition_model-shard2', 'modules/assistant/docs/licenses/node/provenance.json', 'modules/assistant/docs/licenses/pinyin-pro/LICENSE', 'modules/freecamera/archive/worker.js', 'modules/freecamera/RECORDING-ARCHIVE.md', 'scripts/test-local-desktop-ui.js', 'desktop/tray.cjs', 'desktop/tray.png', 'modules/assistant/assistant/chattts-speakers.f32', 'scripts/package-atb.js', 'scripts/release-atb.js', 'desktop/electron-builder.cjs', 'desktop/ui-source.cjs', 'docs/MODULES.md', 'docs/DEPLOYMENT.md', '.github/workflows/release.yml', 'modules/rustdesk/deploy/atb-rustdesk-supervisor.sh']) assert.doesNotThrow(() => assertPublicSourcePath(filename));
+  for (const filename of ['docs/SERVER.md', 'docs/cloud-access.md', 'data/account.json', 'certs/ca.crt', 'desktop-profile/Cookies', 'modules/assistant/voice-runtime/python.exe', 'modules/freecamera/models/yolox_tiny.onnx', 'node_modules/secret.js', '../README.md', '.env', 'modules/assistant/assistant/private-speakers.f32', 'unexpected.txt', 'CONTEXT.md', 'scripts/export-macbook-handoff.py', 'modules/assistant/public/vision/arbitrary-weight', 'modules/assistant/docs/licenses/node/secret.json']) assert.throws(() => assertPublicSourcePath(filename), /rejected|not explicitly/);
   assert.throws(() => assertPublicText('-----BEGIN ' + 'PRIVATE KEY-----', 'test.txt'), /Credential/);
   assert.throws(() => assertPublicText('https://' + [93, 184, 216, 34].join('.'), 'test.txt'), /instance address/);
+  assert.doesNotThrow(() => assertPublicText('DNS fixture ' + [8,8,8,8].join('.'), 'modules/assistant/test/public-information-request.test.js'));
   assert.doesNotThrow(() => assertPublicText('https://203.0.113.1 and https://127.0.0.1', 'test.txt'));
 });
 
@@ -59,6 +60,41 @@ test('manifest writes exact SHA256SUMS including its own hash and rejects checks
   await assert.rejects(verifyChecksums(directory, manifest), /SHA256SUMS/);
 });
 
+test('release provenance includes local synthesis setup, pinned data and desktop UI routing', async t => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'atb-voice-provenance-test-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const source = new Map([
+    ['package.json', '{"name":"atb","version":"0.7.0","private":true,"type":"module"}'],
+    ['desktop/ui-source.cjs', 'module.exports = {};\n'],
+    ['desktop/tray.cjs', 'module.exports = {};\n'],
+    ['modules/assistant/desktop/windows-automation.ps1', '# native UI Automation\n'],
+    ['desktop/tray.png', Buffer.from([137,80,78,71])],
+    ['modules/assistant/scripts/setup-local-tts.py', '# fixed model installer\n'],
+    ['modules/assistant/scripts/download-local-tts.js', 'console.log("download");\n'],
+    ['modules/assistant/assistant/qwen-tts-capabilities.json', '{}\n'],
+    ['modules/assistant/scripts/import-chattts-speakers.py', '# pinned speaker importer\n'],
+    ['modules/assistant/assistant/chattts-speakers.json', '{}\n'],
+    ['modules/assistant/assistant/chattts-speakers.f32', Buffer.from([0,255,128,1])],
+    ['modules/assistant/assistant/local-tts-manifest.json', '{"files":[]}\n'],
+    ['modules/assistant/server/volcengine-voices.json', '{"voices":[]}\n'],
+    ['modules/assistant/docs/LOCAL-TTS-LICENSES.md', 'Model licensing notice\n'],
+    ['modules/assistant/public/vision/LICENSE', 'MIT fixture\n'],
+    ['modules/assistant/public/vision/provenance.json', '{}\n'],
+    ['modules/assistant/public/vision/face_recognition_model-shard2', Buffer.from([1,2,3])],
+    ['modules/assistant/docs/licenses/node/LICENSE.txt', 'Node license\n'],
+    ['modules/assistant/docs/licenses/node/provenance.json', '{}\n'],
+    ['modules/assistant/docs/licenses/pinyin-pro/LICENSE', 'MIT fixture\n'],
+    ['modules/assistant/docs/licenses/pinyin-pro/provenance.json', '{}\n'],
+  ]);
+  for (const [filename, content] of source) {
+    await mkdir(path.dirname(path.join(directory, filename)), { recursive: true });
+    await writeFile(path.join(directory, filename), content);
+  }
+  await verifyFirstPartyRuntime(directory, { variant: 'full', sourceFiles: [...source.keys()], readSource: filename => source.get(filename) });
+  await rm(path.join(directory, 'modules/assistant/assistant/local-tts-manifest.json'));
+  await assert.rejects(verifyFirstPartyRuntime(directory, { variant: 'full', sourceFiles: [...source.keys()], readSource: filename => source.get(filename) }), /file set differs/);
+});
+
 test('clean staging has no private assets and core loads without a modules directory', async t => {
   const directory = await mkdtemp(path.join(tmpdir(), 'atb-package-test-'));
   t.after(() => rm(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }));
@@ -69,13 +105,22 @@ test('clean staging has no private assets and core loads without a modules direc
   if (fullAvailable) {
     const { stage: full } = await stageVariant('full', { stageRoot: directory });
     const fullFiles = await fileList(full);
+    assert.ok(fullFiles.includes('modules/assistant/desktop/windows-automation.ps1'));
     assert.ok(fullFiles.includes('modules/freecamera/models/yolox_tiny.onnx'));
     assert.ok(fullFiles.includes('modules/freecamera/node_modules/onnxruntime-node/package.json'));
     assert.ok(fullFiles.includes('modules/assistant/scripts/setup-assistant-voice.py'));
-    assert.equal(fullFiles.some(filename => /(?:^|\/)voice-runtime\/|(?:^|\/)data\/|\.(?:key|crt)$/.test(filename)), false);
+    for (const filename of ['scripts/setup-local-tts.py', 'scripts/download-local-tts.js', 'scripts/import-chattts-speakers.py', 'assistant/chattts-speakers.json', 'assistant/chattts-speakers.f32', 'assistant/local-tts-manifest.json', 'assistant/qwen-tts-capabilities.json', 'server/volcengine-voices.json', 'docs/LOCAL-TTS-LICENSES.md']) {
+      assert.ok(fullFiles.includes(`modules/assistant/${filename}`), `Missing assistant distribution asset: ${filename}`);
+    }
+    assert.equal(fullFiles.some(filename => /\.(?:key|crt)$/.test(filename)||!filename.includes('/node_modules/')&&/(?:^|\/)voice-runtime\/|(?:^|\/)data\//.test(filename)), false);
+    const {createDshAgent}=await import(pathToFileURL(path.join(full,'modules/assistant/server/dsh-agent.js')).href);
+    const agent=createDshAgent({request:async()=>Response.json({choices:[{message:{content:'暂存运行通过'}}]})});
+    try {const result=await agent.run({url:'https://fixture.example/v1',protocol:'chat',options:{body:JSON.stringify({messages:[{role:'user',content:'隔离分发检查'}]})},registry:{definitions:[],execute:async()=>{throw Error('unexpected tool');}}});assert.equal(result.answer,'暂存运行通过');}finally{await agent.close();}
   } else t.diagnostic('Full staging check requires all three modules and the downloaded model; core check still runs.');
   const { stage: core } = await stageVariant('core', { stageRoot: directory });
   const files = await fileList(core);
+  const { createUiSource } = await import(pathToFileURL(path.join(core, 'desktop/ui-source.cjs')).href);
+  assert.equal(createUiSource({ local: () => ({ origin: 'https://localhost:8443' }), selected: () => null, modules: [] }).trustedPage('https://localhost:8443/platform'), true);
   for (const filename of files) assertRuntimePath(filename, 'core');
   await assert.rejects(access(path.join(core, 'modules')), { code: 'ENOENT' });
   const { loadModules } = await import(pathToFileURL(path.join(core, 'server/modules.js')).href);

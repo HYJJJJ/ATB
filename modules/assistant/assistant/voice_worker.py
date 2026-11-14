@@ -1,67 +1,68 @@
-"""Local ASR and online TTS, using the providers supported by xiaozhi-esp32-server.
+"""Local SenseVoice recognition and ChatTTS / Qwen3-TTS synthesis.
 
 No device provisioning, OTA, model API credentials, or microphone access lives here.
-The parent owns cancellation: terminating this process also releases the recognizer.
+The parent discards cancelled job output and retains the loaded models between leases.
 """
 import argparse
-import asyncio
 import base64
 import json
+import io
 import os
 import sys
+import wave
+from contextlib import redirect_stdout
 from pathlib import Path
 
 
+PROTOCOL_OUTPUT = sys.stdout
+
 def emit(result):
-    sys.stdout.write(json.dumps(result, ensure_ascii=False) + "\n")
-    sys.stdout.flush()
+    PROTOCOL_OUTPUT.write(json.dumps(result, ensure_ascii=False) + "\n")
+    PROTOCOL_OUTPUT.flush()
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model-dir", required=True)
+    parser.add_argument("--model-dir")
     parser.add_argument("--synthesis-only", action="store_true")
+    parser.add_argument("--tts-provider", choices=("volcengine", "chattts", "qwen3tts"), default="chattts")
+    parser.add_argument("--tts-model-dir")
     args = parser.parse_args()
+    recognition = None
+    def load_recognition():
+        nonlocal recognition
+        if recognition is not None:
+            return recognition
+        import sherpa_onnx
+        model_dir = Path(args.model_dir)
+        recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
+            model=str(model_dir / "model.int8.onnx"),
+            tokens=str(model_dir / "tokens.txt"),
+            num_threads=2, sample_rate=16000, feature_dim=80,
+            decoding_method="greedy_search", debug=False, use_itn=True,
+            provider="cpu",
+        )
+        vad_config = sherpa_onnx.VadModelConfig()
+        vad_config.silero_vad.model = str(model_dir / "silero_vad.onnx")
+        vad_config.silero_vad.min_speech_duration = 0.2
+        vad_config.silero_vad.min_silence_duration = 0.5
+        vad_config.sample_rate = 16000
+        vad_config.num_threads = 1
+        vad = sherpa_onnx.VoiceActivityDetector(vad_config, buffer_size_in_seconds=31)
+        recognition = (recognizer, vad_config, vad)
+        return recognition
     try:
-        import edge_tts
+        import numpy as np
+        if args.tts_provider in ("chattts", "qwen3tts"):
+            from local_synthesis import LocalSynthesis
+            with redirect_stdout(sys.stderr):
+                synthesizer = LocalSynthesis(args.tts_provider, args.tts_model_dir)
         if not args.synthesis_only:
-            import numpy as np
-            import sherpa_onnx
-            model_dir = Path(args.model_dir)
-            recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
-                model=str(model_dir / "model.int8.onnx"),
-                tokens=str(model_dir / "tokens.txt"),
-                num_threads=2, sample_rate=16000, feature_dim=80,
-                decoding_method="greedy_search", debug=False, use_itn=True,
-                provider="cpu",
-            )
-            vad_config = sherpa_onnx.VadModelConfig()
-            vad_config.silero_vad.model = str(model_dir / "silero_vad.onnx")
-            vad_config.silero_vad.min_speech_duration = 0.2
-            vad_config.silero_vad.min_silence_duration = 0.5
-            vad_config.sample_rate = 16000
-            vad_config.num_threads = 1
-            vad = sherpa_onnx.VoiceActivityDetector(vad_config, buffer_size_in_seconds=31)
+            load_recognition()
     except Exception:
         emit({"type": "startup-error"})
         return 1
-    emit({"type": "ready", "pid": os.getpid()})
-
-    async def synthesize(message):
-        # Match upstream's EdgeTTS provider; bounded memory, no audio files retained.
-        communicate = edge_tts.Communicate(
-            message["text"], voice=message["voice"], rate=f'{message["rate"]:+d}%'
-        )
-        chunks, length = [], 0
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                length += len(chunk["data"])
-                if length > 6 * 1024 * 1024:
-                    raise ValueError("synthesis-too-large")
-                chunks.append(chunk["data"])
-        if not chunks:
-            raise ValueError("no-audio")
-        return {"audio": base64.b64encode(b"".join(chunks)).decode("ascii"), "mime": "audio/mpeg"}
+    emit({"type": "ready", "pid": os.getpid(), "backend": synthesizer.device if args.tts_provider in ("chattts", "qwen3tts") else "cpu"})
 
     for line in sys.stdin:
         if len(line) > 1400000:
@@ -69,9 +70,14 @@ def main():
         message = {}
         try:
             message = json.loads(line)
-            if message["action"] == "transcribe":
-                if args.synthesis_only:
+            if message["action"] == "recognition-open":
+                with redirect_stdout(sys.stderr):
+                    load_recognition()
+                result = {}
+            elif message["action"] == "transcribe":
+                if recognition is None:
                     raise ValueError("recognition-not-open")
+                recognizer, vad_config, vad = recognition
                 pcm = base64.b64decode(message["pcm"], validate=True)
                 if not pcm or len(pcm) > 960000 or len(pcm) % 2:
                     raise ValueError("invalid-audio")
@@ -92,8 +98,18 @@ def main():
                     result = {"text": stream.result.text}
                 else:
                     result = {"text": ""}
+            elif message["action"] == "speak-stream":
+                if args.tts_provider not in ('chattts', 'qwen3tts'):
+                    raise ValueError('unsupported-stream')
+                with redirect_stdout(sys.stderr):
+                    synthesizer.stream(message, lambda pcm: emit({'id':message['id'], 'type':'audio', 'audio':base64.b64encode(pcm).decode('ascii')}))
+                result = {}
             elif message["action"] == "speak":
-                result = asyncio.run(asyncio.wait_for(synthesize(message), timeout=25))
+                if args.tts_provider not in ("chattts", "qwen3tts"):
+                    raise ValueError("synthesis-provider-not-local")
+                with redirect_stdout(sys.stderr):
+                    audio = synthesizer.synthesize(message)
+                result = {"audio": base64.b64encode(audio).decode("ascii"), "mime": "audio/wav"}
             else:
                 raise ValueError("unknown-action")
             emit({"id": message["id"], "ok": True, **result})

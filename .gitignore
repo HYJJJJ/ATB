@@ -39,3 +39,10 @@ docs/*
 scripts/test-cloud*.js
 scripts/test-platform*.js
 Start-FreeCamera*.cmd
+
+# Local assistant traces and shared operational context are not public source.
+.playwright-mcp/
+CONTEXT.md
+scripts/export-macbook-handoff.py
+# Implementation history stays local; public usage and license documents are retained.
+modules/*/docs/20??-??-??-*.md

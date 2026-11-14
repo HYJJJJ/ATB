@@ -2,7 +2,7 @@
   "id": "rustdesk",
   "name": "RustDesk 远程桌面",
   "description": "自建远程桌面服务配置、连接检查与官方客户端启动入口",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "apiVersion": 1,
   "entry": "/modules/rustdesk/",
   "server": "server/index.js",

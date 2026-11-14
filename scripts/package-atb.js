@@ -181,6 +181,13 @@ export async function packageVariants(options = {}) {
     process.env.ATB_BUILD_VARIANT = variant;
     await electronBuild({ targets: Platform.WINDOWS.createTarget(['portable'], Arch.x64), publish: 'never', config: {
       ...configuration, directories: { app: stage, output: path.join(output, variant) },
+      // electron-builder discovers dependencies from the platform manifest only.
+      // Module installations were already isolated and filtered by stageVariant.
+      extraFiles: build.modules.filter(id => Object.keys(build.dependencies[id] || {}).length).map(id => ({
+        from: path.join(stage, 'modules', id, 'node_modules'),
+        to: `resources/app/modules/${id}/node_modules`,
+        filter: ['**/*'],
+      })),
       electronDist: path.join(root, 'node_modules/electron/dist'), electronVersion: require('electron/package.json').version,
       portable: { artifactName: `ATB-${build.version}-Windows-x64-${variant}.exe` },
     } });

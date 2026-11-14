@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { mkdir, mkdtemp, readFile, rm, writeFile, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -29,9 +30,27 @@ for (const variant of ['full', 'core']) {
   if (variant === 'full') {
     for (const id of expected) await access(path.join(appDir, 'modules', id, 'module.json'));
     await access(path.join(appDir, 'modules/freecamera/models/yolox_tiny.onnx'));
+    for (const name of ['sharp', 'onnxruntime-node', 'ws']) await access(path.join(appDir, 'modules/freecamera/node_modules', name, 'package.json'));
+    for (const name of ['node', 'npm', '@deepseek-ai/dsh-sdk-client', '@modelcontextprotocol/sdk', '@playwright/mcp', 'linkedom', 'ws']) {
+      await access(path.join(appDir, 'modules/assistant/node_modules', name, 'package.json'));
+    }
     const require = createRequire(path.join(appDir, 'modules/freecamera/package.json'));
     assert.equal(typeof require('sharp'), 'function');
     assert.ok(require('onnxruntime-node').InferenceSession);
+    const assistantRequire = createRequire(path.join(appDir, 'modules/assistant/package.json'));
+    await access(path.join(path.dirname(assistantRequire.resolve('node/package.json')), 'bin/node.exe'));
+    assistantRequire.resolve('@deepseek-ai/dsh-sdk-client');
+    const { createDshAgent } = await import(pathToFileURL(path.join(appDir, 'modules/assistant/server/dsh-agent.js')).href);
+    let rounds = 0, calls = 0;
+    const agent = createDshAgent({ request: async () => ++rounds === 1
+      ? Response.json({ choices: [{ finish_reason: 'tool_calls', message: { tool_calls: [{ id: 'packaged_1', type: 'function', function: { name: 'current_time', arguments: '{}' } }] } }] })
+      : Response.json({ choices: [{ message: { content: 'Packaged tool continuation passed' } }] }) });
+    try {
+      const result = await agent.run({ url: 'https://fixture.example/v1', protocol: 'chat', signal: AbortSignal.timeout(20000),
+        options: { body: JSON.stringify({ messages: [{ role: 'user', content: 'Isolated packaged tool test' }] }) },
+        registry: { definitions: [{ name: 'current_time', description: 'Fixed fixture', parameters: { type: 'object', properties: {} } }], execute: async () => { calls++; return { ok: true, data: { time: 'fixed fixture' } }; } } });
+      assert.equal(result.answer, 'Packaged tool continuation passed'); assert.equal(calls, 1); assert.equal(rounds, 2);
+    } finally { await agent.close(); }
     assert.equal(files.some(filename => /(?:voice-runtime\/|\.venv\/|\.pem$|\.key$|\.crt$)/.test(filename)), false);
   }
   const directory = await mkdtemp(path.join(tmpdir(), `atb-packaged-${variant}-`));
